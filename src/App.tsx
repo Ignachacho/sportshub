@@ -33,7 +33,7 @@ import {
   PlusCircle, FileText, ChevronRight, X, Loader2, Trophy, Upload,
   RefreshCw, Sparkles, Save, Edit2, Bell, Settings, Check, AlertTriangle,
   Info, CheckCircle, Clock, MapPin, Zap, Target, TrendingUp, TrendingDown,
-  ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield,
+  ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
   Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, Trash2
 } from 'lucide-react';
@@ -73,8 +73,9 @@ const mapTestDefinition = (d: any): TestDefinition => ({
 });
 const mapPhysicalTestResult = (r: any): PhysicalTestResult => ({
   id: r.id, teamId: r.team_id, subjectId: r.subject_id,
-  testId: r.test_id, date: r.date, value: r.value
-});
+  testId: r.test_id, date: r.date, value: r.value,
+  notes: r.notes || '',
+} as any);
 const mapMatchStat = (m: any): MatchStat => ({
   id: m.id, matchId: m.match_id, subjectId: m.subject_id, stats: m.stats || {}
 });
@@ -461,17 +462,25 @@ const LoginView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TeamSelectionView = ({
-  teams, onSelect, onRegisterTeam, currentUser, onLogout
+  teams, onSelect, onRegisterTeam, onInvite, onDeleteTeam, currentUser, onLogout
 }: {
   teams: Team[];
   onSelect: (t: Team) => void;
   onRegisterTeam: (t: Partial<Team>) => Promise<void>;
+  onInvite: (teamId: string, email: string) => Promise<void>;
+  onDeleteTeam: (teamId: string) => Promise<void>;
   currentUser: any;
   onLogout: () => void;
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', category: '' });
+  const [inviteTeamId, setInviteTeamId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [deleteTeamId, setDeleteTeamId] = useState<string | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleCreate = async () => {
     if (!form.name.trim()) return;
@@ -485,8 +494,117 @@ const TeamSelectionView = ({
     }
   };
 
+  const handleInviteSubmit = async () => {
+    if (!inviteTeamId || !inviteEmail.trim()) return;
+    setInviteLoading(true);
+    try {
+      await onInvite(inviteTeamId, inviteEmail.trim().toLowerCase());
+      setInviteEmail('');
+      setInviteTeamId(null);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const inviteTeam = teams.find(t => t.id === inviteTeamId);
+  const deleteTeam = teams.find(t => t.id === deleteTeamId);
+
+  const handleDeleteSubmit = async () => {
+    if (!deleteTeamId || deleteConfirmName !== deleteTeam?.name) return;
+    setDeleteLoading(true);
+    try {
+      await onDeleteTeam(deleteTeamId);
+      setDeleteTeamId(null);
+      setDeleteConfirmName('');
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col p-6 md:p-12 relative overflow-hidden">
+      {/* Invite modal */}
+      {inviteTeamId && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-slate-800 rounded-[28px] p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center">
+                <Users size={18} className="text-orange-400" />
+              </div>
+              <div>
+                <h3 className="font-black text-white text-lg">Invitar al staff</h3>
+                <p className="text-[10px] text-slate-500">{inviteTeam?.name}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+              La persona invitada verá y podrá editar este equipo con su propia cuenta. Debe tener cuenta registrada en la app.
+            </p>
+            <div className="space-y-1.5 mb-5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Email del entrenador</label>
+              <input
+                type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                placeholder="hermana@gmail.com" autoFocus
+                onKeyDown={e => e.key === 'Enter' && handleInviteSubmit()}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500 transition-colors" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setInviteTeamId(null); setInviteEmail(''); }}
+                className="flex-1 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700 transition-all">
+                Cancelar
+              </button>
+              <button onClick={handleInviteSubmit} disabled={inviteLoading || !inviteEmail.trim()}
+                className="flex-1 py-3 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20">
+                {inviteLoading ? <><Loader2 size={13} className="animate-spin" />Invitando...</> : <>Invitar</>}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {/* Delete confirmation modal */}
+      {deleteTeamId && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-red-500/20 rounded-[28px] p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-400" />
+              </div>
+              <h3 className="font-black text-white text-lg">Eliminar equipo</h3>
+            </div>
+            <div className="bg-red-500/5 border border-red-500/15 rounded-xl p-4 my-5 space-y-1">
+              <p className="text-xs font-black text-red-400 uppercase tracking-widest">⚠️ Acción irreversible</p>
+              <p className="text-xs text-slate-400 leading-relaxed mt-1">
+                Se eliminarán permanentemente <span className="text-white font-bold">todos los datos</span> de <span className="text-red-400 font-bold">«{deleteTeam?.name}»</span>: jugadores, sesiones, tests físicos, wellness, lesiones, evaluaciones y estadísticas.
+              </p>
+            </div>
+            <div className="space-y-1.5 mb-5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Escribe <span className="text-red-400">{deleteTeam?.name}</span> para confirmar
+              </label>
+              <input
+                value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)}
+                placeholder={deleteTeam?.name}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-red-500/50 transition-colors" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setDeleteTeamId(null); setDeleteConfirmName(''); }}
+                className="flex-1 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700 transition-all">
+                Cancelar
+              </button>
+              <button onClick={handleDeleteSubmit}
+                disabled={deleteLoading || deleteConfirmName !== deleteTeam?.name}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase hover:bg-red-400 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
+                {deleteLoading ? <><Loader2 size={13} className="animate-spin" />Eliminando...</> : <><Trash2 size={13} />Eliminar</>}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {/* Header */}
@@ -542,18 +660,33 @@ const TeamSelectionView = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {teams.map(team => (
-                <motion.button key={team.id} whileHover={{ y: -4 }} onClick={() => onSelect(team)}
-                  className="bg-slate-900 border border-slate-800 p-8 rounded-[28px] text-left group hover:border-orange-500/50 transition-all shadow-lg flex flex-col justify-between min-h-[240px]">
-                  <div className="flex justify-between">
-                    <div className="w-12 h-12 bg-slate-950 border border-slate-700 rounded-2xl flex items-center justify-center text-xl font-black text-white group-hover:bg-orange-500 group-hover:text-slate-950 transition-all">{team.name.charAt(0)}</div>
-                    <span className="text-[9px] font-mono bg-slate-800 text-slate-500 px-2 py-1 rounded-lg border border-slate-700 uppercase self-start">{team.sport || 'BBALL'}</span>
+                <div key={team.id} className="relative group">
+                  <motion.button whileHover={{ y: -4 }} onClick={() => onSelect(team)}
+                    className="w-full bg-slate-900 border border-slate-800 p-8 rounded-[28px] text-left hover:border-orange-500/50 transition-all shadow-lg flex flex-col justify-between min-h-[240px]">
+                    <div className="flex justify-between">
+                      <div className="w-12 h-12 bg-slate-950 border border-slate-700 rounded-2xl flex items-center justify-center text-xl font-black text-white group-hover:bg-orange-500 group-hover:text-slate-950 transition-all">{team.name.charAt(0)}</div>
+                      <span className="text-[9px] font-mono bg-slate-800 text-slate-500 px-2 py-1 rounded-lg border border-slate-700 uppercase self-start">{team.sport || 'BBALL'}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-mono uppercase mb-1">{team.category}</p>
+                      <h3 className="text-xl font-black text-white mb-3 group-hover:text-orange-500 transition-colors leading-tight">{team.name}</h3>
+                      <p className="text-[10px] text-slate-600 font-mono uppercase flex items-center gap-1.5"><Users size={10} /> {team.playersCount} jugadores</p>
+                    </div>
+                  </motion.button>
+                  {/* Action buttons — visible on hover */}
+                  <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={e => { e.stopPropagation(); setInviteTeamId(team.id); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-orange-400 hover:border-orange-500/30 rounded-xl text-[9px] font-bold uppercase tracking-wide transition-all">
+                      <Users size={10} /> Invitar
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setDeleteTeamId(team.id); setDeleteConfirmName(''); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/30 rounded-xl text-[9px] font-bold uppercase tracking-wide transition-all">
+                      <Trash2 size={10} /> Eliminar
+                    </button>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-mono uppercase mb-1">{team.category}</p>
-                    <h3 className="text-xl font-black text-white mb-3 group-hover:text-orange-500 transition-colors leading-tight">{team.name}</h3>
-                    <p className="text-[10px] text-slate-600 font-mono uppercase flex items-center gap-1.5"><Users size={10} /> {team.playersCount} jugadores</p>
-                  </div>
-                </motion.button>
+                </div>
               ))}
               <button onClick={() => setIsCreating(true)} className="border-2 border-dashed border-slate-800 p-8 rounded-[28px] flex flex-col items-center justify-center gap-3 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group min-h-[240px]">
                 <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center group-hover:bg-slate-800 transition-all">
@@ -886,6 +1019,25 @@ const SessionPlanTool = ({
   const addBlock = () => setBlocks(prev => [...prev, { id: Date.now().toString(), phase: 'Bloque Extra', name: '', duration: 15, players: 'Todos', notes: '', tasks: [''] }]);
   const removeBlock = (id: string) => setBlocks(prev => prev.filter(b => b.id !== id));
   const updateBlock = (id: string, field: keyof DrillBlock, value: any) => setBlocks(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
+  const moveBlock = (id: string, dir: 'up' | 'down') => setBlocks(prev => {
+    const idx = prev.findIndex(b => b.id === id);
+    if (dir === 'up' && idx === 0) return prev;
+    if (dir === 'down' && idx === prev.length - 1) return prev;
+    const next = [...prev];
+    const swap = dir === 'up' ? idx - 1 : idx + 1;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    return next;
+  });
+  const moveTask = (blockId: string, ti: number, dir: 'up' | 'down') => {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) return;
+    const tasks = [...block.tasks];
+    if (dir === 'up' && ti === 0) return;
+    if (dir === 'down' && ti === tasks.length - 1) return;
+    const swap = dir === 'up' ? ti - 1 : ti + 1;
+    [tasks[ti], tasks[swap]] = [tasks[swap], tasks[ti]];
+    updateBlock(blockId, 'tasks', tasks);
+  };
 
   const totalMins = blocks.reduce((acc, b) => acc + b.duration, 0);
   const phaseColors: Record<string, string> = {
@@ -962,6 +1114,17 @@ const SessionPlanTool = ({
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Move block up/down */}
+                    <div className="flex flex-col gap-0.5">
+                      <button disabled={idx === 0} onClick={() => moveBlock(block.id, 'up')}
+                        className="p-0.5 text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                        <ChevronUp size={12} />
+                      </button>
+                      <button disabled={idx === blocks.length - 1} onClick={() => moveBlock(block.id, 'down')}
+                        className="p-0.5 text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
                     <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
                       <Timer size={10} className="text-slate-500" />
                       <input type="number" value={block.duration} min={1} max={120}
@@ -1008,6 +1171,17 @@ const SessionPlanTool = ({
                   </div>
                   {(block.tasks || []).map((task, ti) => (
                     <div key={ti} className="flex items-center gap-2">
+                      {/* Reorder task buttons */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button disabled={ti === 0} onClick={() => moveTask(block.id, ti, 'up')}
+                          className="text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                          <ChevronUp size={10} />
+                        </button>
+                        <button disabled={ti === (block.tasks || []).length - 1} onClick={() => moveTask(block.id, ti, 'down')}
+                          className="text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                          <ChevronDown size={10} />
+                        </button>
+                      </div>
                       <span className="text-[9px] text-slate-700 font-mono w-4 shrink-0">{ti + 1}.</span>
                       <input value={task}
                         onChange={e => {
@@ -1171,11 +1345,13 @@ const FORCE_CYCLES = [
 const BASKETBALL_TEST_BATTERY = [
   {
     name: 'Course Navette (Léger)', unit: 'palier', category: 'resistencia', icon: '🏃',
+    audioUrl: 'https://www.youtube.com/watch?v=4oH_4_zPEjI',
+    audioLabel: 'Audio oficial Course Navette (Léger 20m)',
     shortPurpose: 'Resistencia aeróbica general — cuánto aguantan al ritmo del partido',
     basketballValue: 'Determina si tus jugadores llegan al cuarto cuarto al mismo ritmo que al primero. Un equipo con buen Course Navette no pierde la marca por cansancio en los últimos minutos.',
     protocol: [
       'Marcar dos líneas paralelas a 20 m de distancia en la pista',
-      'Reproducir el audio del Course Navette (pitidos con ritmo incremental, descárgalo online)',
+      'Reproducir el audio del Course Navette (usa el botón de audio en esta pantalla)',
       'Todos corren a la vez de línea a línea siguiendo el ritmo de los pitidos',
       'Cada vez que suena el pitido, el pie debe haber pisado o cruzado la línea',
       'Cuando un jugador no llega dos veces consecutivas, anota su palier actual y número de idas',
@@ -1324,6 +1500,8 @@ const BASKETBALL_TEST_BATTERY = [
   },
   {
     name: 'TIVRE (Test Intermitente)', unit: 'nivel', category: 'resistencia', icon: '🔋',
+    audioUrl: 'https://www.youtube.com/watch?v=evqvF9NEYXM',
+    audioLabel: 'Audio oficial TIVRE (Test Intermitente 15-15)',
     shortPurpose: 'Potencia aeróbica específica — resistencia al esfuerzo intermitente real de partido',
     basketballValue: 'El más específico de los tests de resistencia para baloncesto. En un partido, no corres 12 minutos seguidos — corres, paras, corres, paras. El TIVRE mide exactamente esa capacidad: sprints cortos con recuperaciones parciales, igual que el juego real. Determina la VAM (Velocidad Aeróbica Máxima).',
     protocol: [
@@ -1569,6 +1747,178 @@ const PLAYER_CATEGORIES = [
       { block: 'Vuelta calma', time: '10-15 min', content: 'Estiramientos, Wellness/RPE, análisis de sesión.' },
     ],
     warning: 'Con jugadores senior ya formados, lo más importante es la gestión de la fatiga acumulada. Un jugador sobreentrenado rinde menos que uno bien descansado. El descanso es parte del entrenamiento.',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY PLANS — Day-by-day structure per category + days/week
+// ─────────────────────────────────────────────────────────────────────────────
+const WEEKLY_PLANS: Record<string, Record<number, { day: string; focus: string; details: string; intensity: 'alta' | 'media' | 'baja' | 'libre' }[]>> = {
+  minibasket: {
+    2: [
+      { day: 'Día 1 — Lunes/Martes', focus: 'Coordinación + Habilidades básicas', intensity: 'media', details: 'Calentamiento con juegos de reacción (8 min). Circuito de coordinación: bote, pase, recepción con variaciones. Juego reducido libre. Vuelta a la calma con estiramientos dinámicos.' },
+      { day: 'Día 2 — Jueves/Viernes', focus: 'Velocidad de reacción + Juego', intensity: 'media', details: 'Activación con juegos de persecución (10 min). Trabajo de cambios de dirección con balón. Partido mini (4vs4). Reflexión grupal corta + estiramiento.' },
+    ],
+    3: [
+      { day: 'Día 1', focus: 'Coordinación multidireccional', intensity: 'media', details: 'Calentamiento activo con juegos (8 min). Escaleras de agilidad / conos. Juegos de coordinación ojo-mano. Relajación con música.' },
+      { day: 'Día 2', focus: 'Habilidades técnicas básicas', intensity: 'media', details: 'Activación (10 min). Trabajo de bote, pase y tiro sin presión. Ejercicios de 2vs0 y 3vs0. Partido corto.' },
+      { day: 'Día 3', focus: 'Juego libre + resistencia aeróbica suave', intensity: 'baja', details: 'Calentamiento suave (10 min). Partido de juego libre guiado por el entrenador. Carrera continua suave (5 min). Estiramientos en grupo.' },
+    ],
+    4: [
+      { day: 'Día 1', focus: 'Coordinación + Frecuencia de movimiento', intensity: 'media', details: 'Circuito de pliometría básica (saltos simples, skipping). Juegos de reacción y persecución. Práctica de bote.' },
+      { day: 'Día 2', focus: 'Técnica individual', intensity: 'media', details: 'Parada en 1 y 2 tiempos. Tiro estático y en movimiento. Juego 1vs1 guiado.' },
+      { day: 'Día 3', focus: 'Resistencia aeróbica + coordinación', intensity: 'baja', details: 'Carrera continua suave (8-10 min). Juegos de relevos. Flexibilidad dinámica.' },
+      { day: 'Día 4', focus: 'Juego colectivo', intensity: 'media', details: 'Partido 4vs4 / 5vs5 adaptado. Situaciones de 2vs1 y 3vs2. Reflexión grupal.' },
+    ],
+  },
+  infantil: {
+    2: [
+      { day: 'Día 1', focus: 'Velocidad + Técnica individual', intensity: 'media', details: 'Activación dinámica (10 min). Sprints cortos 10-15m con variantes. Trabajo técnico (bote presión, tiro en carrera). Partido 4vs4.' },
+      { day: 'Día 2', focus: 'Resistencia aeróbica + Colectivo', intensity: 'media', details: 'Calentamiento activo. Circuito de resistencia aeróbica (series cortas). Situaciones colectivas 3vs3 y 4vs4. Estiramientos.' },
+    ],
+    3: [
+      { day: 'Día 1', focus: 'Velocidad + Agilidad', intensity: 'alta', details: 'Calentamiento (10 min). 4-6 sprints de 15-20m con pausa completa. Ejercicios de agilidad con cambio de dirección y balón. Técnica individual sin fatiga.' },
+      { day: 'Día 2', focus: 'Resistencia aeróbica + Táctica', intensity: 'media', details: 'Activación. Circuito aeróbico interválico (30s trabajo/30s pausa). Situaciones 3vs3 y 4vs4. Introducción a conceptos tácticos.' },
+      { day: 'Día 3', focus: 'Partido + Recuperación activa', intensity: 'baja', details: 'Calentamiento suave. Partido con normas modificadas. Trote suave 5 min. Estiramientos globales.' },
+    ],
+    4: [
+      { day: 'Día 1', focus: 'Velocidad y arranques', intensity: 'alta', details: 'Calentamiento 10 min. 5-6 sprints con salida distintas posiciones. Cambios de dirección con señal. Tiro en movimiento.' },
+      { day: 'Día 2', focus: 'Fuerza general (peso corporal)', intensity: 'alta', details: 'Activación. Circuito: sentadillas, flexiones, zancadas, plancha. Trabajo de core básico. Técnica individual.' },
+      { day: 'Día 3', focus: 'Resistencia + Táctica', intensity: 'media', details: 'Series aeróbicas interválicas. Situaciones 3vs3 guiadas. Colectivo ataque-defensa.' },
+      { day: 'Día 4', focus: 'Partido + Trabajo explosivo', intensity: 'media', details: 'Activación pliométrica (saltos verticales). Partido 5vs5 supervisado. Reflexión táctica.' },
+    ],
+  },
+  cadete: {
+    2: [
+      { day: 'Día 1', focus: 'Fuerza funcional + Explosividad', intensity: 'alta', details: 'Calentamiento potenciador (8 min). Circuito de fuerza: sentadilla, peso muerto, press. Saltos reactivos. Técnica sin fatiga.' },
+      { day: 'Día 2', focus: 'Resistencia específica + Colectivo', intensity: 'alta', details: 'Activación. Series interválicas (15s/15s al 100-110% VAM). Situaciones 3vs3 / 4vs4 con fatiga acumulada. Partido.' },
+    ],
+    3: [
+      { day: 'Día 1', focus: 'Fuerza máxima y potencia', intensity: 'alta', details: 'Calentamiento 10 min. Sentadilla 3x5 (70-80% 1RM) + salto inmediato (contraste). Press de banca / dominadas. Core estabilizador.' },
+      { day: 'Día 2', focus: 'Resistencia específica basketball', intensity: 'alta', details: 'Activación. Interválico 15s/15s (4-5 series x 5 min). RSA (Sprint 6x30m descanso 30s). Situaciones 4vs4.' },
+      { day: 'Día 3', focus: 'Técnica + Colectivo + Partido', intensity: 'media', details: 'Trabajo técnico específico (20 min). Colectivo 5vs5 guiado. Partido real o simulado. Reflexión.' },
+    ],
+    4: [
+      { day: 'Día 1 — Fuerza', focus: 'Fuerza máxima', intensity: 'alta', details: 'Calentamiento potenciador. Sentadilla, peso muerto, press. 3-4 series de 4-6 reps al 80-85% 1RM. Core.' },
+      { day: 'Día 2 — Cardio', focus: 'Resistencia interválica', intensity: 'alta', details: 'Interválico 15/15 al 100-110% VAM. RSA 6x30m. Situaciones con fatiga.' },
+      { day: 'Día 3 — Potencia', focus: 'Explosividad + Velocidad', intensity: 'alta', details: 'Sprints 5x20m. Saltos reactivos (drop jump, CMJ). Contraste fuerza-salto.' },
+      { day: 'Día 4 — Colectivo', focus: 'Partido + Recuperación activa', intensity: 'media', details: 'Partido 5vs5. Trote suave. Estiramientos. Reflexión táctica breve.' },
+    ],
+    5: [
+      { day: 'Día 1 — Fuerza', focus: 'Fuerza máxima', intensity: 'alta', details: 'Sentadilla + Press. 4 series 4-6 reps 80-85% 1RM.' },
+      { day: 'Día 2 — Velocidad', focus: 'Sprints + Agilidad', intensity: 'alta', details: 'Sprints 10-20-30m. Cambios de dirección (T-test, Illinois). Pliometría reactiva.' },
+      { day: 'Día 3 — Resistencia', focus: 'Interválico intenso', intensity: 'alta', details: '15/15 al 110% VAM. RSA. Situaciones con carga de juego.' },
+      { day: 'Día 4 — Potencia + Colectivo', focus: 'Contraste + Táctica', intensity: 'media', details: 'Contraste fuerza-salto. 5vs5 guiado. Correcciones tácticas.' },
+      { day: 'Día 5 — Partido + Recuperación', focus: 'Competición simulada', intensity: 'baja', details: 'Partido completo. Trote regenerativo. Estiramientos profundos.' },
+    ],
+  },
+  junior: {
+    2: [
+      { day: 'Día 1', focus: 'Fuerza + Potencia', intensity: 'alta', details: 'Bloque fuerza máxima (sentadilla, press, dominadas). Saltos de contraste. Técnica individual de calidad.' },
+      { day: 'Día 2', focus: 'Resistencia específica + Colectivo', intensity: 'alta', details: 'Interválico específico. RSA. Partido o situaciones complejas 4vs4 / 5vs5.' },
+    ],
+    3: [
+      { day: 'Día 1', focus: 'Fuerza máxima', intensity: 'alta', details: 'Sentadilla 4x4 (85% 1RM). Peso muerto 3x5. Press banca. Rotadores de cadera / core.' },
+      { day: 'Día 2', focus: 'Potencia + Velocidad', intensity: 'alta', details: 'Sprints 5x20m. Pliometría (drop jump 40cm, CMJ). RSA 6x30m. Contraste fuerza-explosividad.' },
+      { day: 'Día 3', focus: 'Resistencia específica + Partido', intensity: 'media', details: '15/15 al 110% VAM. Partido 5vs5. Análisis táctico y corrección.' },
+    ],
+    4: [
+      { day: 'Día 1', focus: 'Fuerza máxima', intensity: 'alta', details: 'Bloque pesado: sentadilla, peso muerto, press. 4-5 series 3-5 reps.' },
+      { day: 'Día 2', focus: 'Potencia + Pliometría', intensity: 'alta', details: 'Saltos reactivos. Contraste. Sprints cortos máximos.' },
+      { day: 'Día 3', focus: 'Resistencia específica', intensity: 'alta', details: 'Interválico 15/15. RSA. Situaciones con fatiga real.' },
+      { day: 'Día 4', focus: 'Colectivo + Competición simulada', intensity: 'media', details: 'Partido real o simulado. Gestión de fatiga acumulada. Estiramientos profundos.' },
+    ],
+    5: [
+      { day: 'Día 1', focus: 'Fuerza máxima', intensity: 'alta', details: 'Sentadilla + Press. 4-5 series 3-5 reps 85-90% 1RM.' },
+      { day: 'Día 2', focus: 'Potencia explosiva', intensity: 'alta', details: 'Pliometría avanzada. Contraste. Sprints 10-20m.' },
+      { day: 'Día 3', focus: 'Resistencia interválica', intensity: 'alta', details: '15/15 al 110% VAM. RSA. Situaciones bajo fatiga.' },
+      { day: 'Día 4', focus: 'Técnico-táctico', intensity: 'media', details: '5vs5 guiado. Sistemas de juego. Gestión de errores.' },
+      { day: 'Día 5', focus: 'Partido + Recuperación', intensity: 'baja', details: 'Competición o simulacro. Trote regenerativo + estiramientos profundos.' },
+    ],
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INJURY PREVENTION — Evidence-based protocols for basketball
+// ─────────────────────────────────────────────────────────────────────────────
+const INJURY_PREVENTION = [
+  {
+    id: 'tobillo',
+    area: 'Tobillo',
+    icon: '🦶',
+    risk: 'Muy alto',
+    riskColor: 'text-red-400',
+    prevalence: '25-45% de todas las lesiones en baloncesto',
+    mechanism: 'Inversión forzada durante saltos y cambios de dirección. Los pivots y escoltas son los más expuestos.',
+    methods: [
+      { name: 'Propiocepción en plato inestable', dose: '3x30s por pie · 3 días/semana', effect: 'Reduce recidivas hasta un 50% en jugadores con historial de esguinces', phase: 'Calentamiento / Post-sesión' },
+      { name: 'Fortalecimiento peroneos (banda elástica)', dose: '3x15 reps · Eversión-inversión controlada', effect: 'Mejora la estabilidad lateral activa del tobillo', phase: 'Post-sesión' },
+      { name: 'Saltos a 1 pie con aterrizaje controlado', dose: '3x8 por pie', effect: 'Entrena la amortiguación y el control motor en el aterrizaje', phase: 'Bloque físico' },
+    ],
+    tip: 'El vendaje funcional o el strapping reduce el riesgo en un 50% pero NO sustituye el entrenamiento propioceptivo. Usa ambos.',
+  },
+  {
+    id: 'rodilla',
+    area: 'Rodilla (LCA + Rotuliano)',
+    icon: '🦵',
+    risk: 'Alto',
+    riskColor: 'text-orange-400',
+    prevalence: '15-20% de las lesiones. El LCA es la lesión más temida por su impacto en la carrera.',
+    mechanism: 'Valgo dinámico de rodilla (rodilla hacia dentro) en aterrizajes y cambios de dirección. Mayor riesgo en chicas jóvenes.',
+    methods: [
+      { name: 'Programa FIFA 11+ Basketball / PEP Protocol', dose: '15-20 min · Antes de cada sesión · Todo el año', effect: 'Reduce lesiones de LCA hasta un 62% en deportes de equipo', phase: 'Calentamiento OBLIGATORIO' },
+      { name: 'Nórdicos de isquiotibiales', dose: '3x6-8 reps con progresión semanal', effect: 'El ejercicio con mayor evidencia para prevenir lesiones musculares del tren inferior', phase: 'Bloque físico' },
+      { name: 'Sentadilla monopodal (pistol squat)', dose: '3x8 por pierna · Controlado y lento', effect: 'Detecta y corrige asimetrías. Fortalece glúteo medio y vasto medial', phase: 'Fuerza' },
+      { name: 'Aterrizajes con retroalimentación visual (espejo/vídeo)', dose: '10 min · 2 veces/semana', effect: 'El feedback visual corrige el valgo de rodilla en aterrizajes', phase: 'Técnico' },
+    ],
+    tip: 'Analiza siempre los aterrizajes en saltos. Si ves rodillas hacia dentro, PARA y corrige. Es más importante que el ejercicio en sí.',
+  },
+  {
+    id: 'espalda',
+    area: 'Zona lumbar',
+    icon: '🏋️',
+    risk: 'Medio',
+    riskColor: 'text-yellow-400',
+    prevalence: '10-15% de los jugadores en categoría cadete-junior-senior. Mayor incidencia en períodos de carga alta.',
+    mechanism: 'Debilidad del core, fatiga muscular acumulada y sobrecarga de extensión lumbar (tiro, salto, sprints repetidos).',
+    methods: [
+      { name: 'Plancha frontal + lateral', dose: '3x30-45s · Sin compensaciones', effect: 'Base de la estabilidad lumbo-pélvica. Reduce la presión discal en movimientos explosivos', phase: 'Core / Post-sesión' },
+      { name: 'Dead bug', dose: '3x10 por lado · Lento y controlado', effect: 'Activa el transverso abdominal sin sobrecargar la columna. Ideal para prevención', phase: 'Core' },
+      { name: 'Bird dog', dose: '3x10 por lado', effect: 'Estabilidad lumbar con disociación cadera-columna. Muy efectivo en jóvenes', phase: 'Core' },
+      { name: 'Hip hinge (bisagra de cadera)', dose: '3x10 · Enseñar el patrón motor correcto', effect: 'Corrige la tendencia a flexionar la columna en lugar de la cadera. Clave para el peso muerto y los saltos', phase: 'Técnico / Fuerza' },
+    ],
+    tip: 'Dedica 10 minutos al core al final de CADA sesión física. Es el trabajo de prevención con mayor retorno a largo plazo.',
+  },
+  {
+    id: 'hombro',
+    area: 'Hombro y manguito rotador',
+    icon: '💪',
+    risk: 'Medio',
+    riskColor: 'text-yellow-400',
+    prevalence: '8-12%. Más frecuente en lanzadores frecuentes (bases, escoltas) y jugadores con mucho volumen de tiro.',
+    mechanism: 'Desequilibrio entre rotadores internos (potentes) y rotadores externos (débiles). El tiro desarrolla la musculatura anterior pero descompensa la posterior.',
+    methods: [
+      { name: 'Rotación externa con banda (Thrower\'s Ten)', dose: '3x15 reps · A velocidad media · Diario', effect: 'El protocolo más validado para equilibrar la musculatura del hombro en deportes de lanzamiento', phase: 'Pre/Post sesión' },
+      { name: 'Face pull con banda elástica', dose: '3x15-20 reps', effect: 'Activa deltoides posterior y manguito rotador externo. Corrige la postura de hombros hacia adelante', phase: 'Post-sesión' },
+      { name: 'Sleeping stretch (estiramiento cápsula posterior)', dose: '3x30s por brazo', effect: 'Aumenta la rotación interna y reduce la tensión posterior del hombro', phase: 'Vuelta a la calma' },
+    ],
+    tip: 'Cada 10 minutos de tiro = 1 set de rotación externa. Si tus jugadores tiran mucho, trabaja preventivamente el hombro posterior.',
+  },
+  {
+    id: 'sobrecarga',
+    area: 'Gestión de la carga (overtraining)',
+    icon: '📊',
+    risk: 'Transversal',
+    riskColor: 'text-purple-400',
+    prevalence: 'No es una lesión, es la causa raíz del 60-70% de las lesiones en temporada.',
+    mechanism: 'La carga aguda supera la capacidad de recuperación del jugador. Se produce cuando la relación carga-aguda/carga-crónica (ACWR) > 1.5.',
+    methods: [
+      { name: 'Ratio Carga Aguda:Crónica (ACWR) ≤ 1.3', dose: 'Monitorización semanal del RPE x duración', effect: 'Zona verde: 0.8-1.3. Zona roja: >1.5. El umbral exacto donde el riesgo de lesión se dispara', phase: 'Planificación' },
+      { name: 'Regla del 10%', dose: 'No aumentar la carga semanal más del 10% respecto a la semana anterior', effect: 'Permite una adaptación gradual del tejido conectivo (tendones, ligamentos) que va más lento que el músculo', phase: 'Planificación' },
+      { name: 'Sesiones de recuperación activa', dose: '1-2 sesiones/semana de baja intensidad (RPE 3-4)', effect: 'Mejoran la recuperación sin añadir fatiga. Son tan importantes como los días duros', phase: 'Semanal' },
+      { name: 'Wellness matutino (calidad sueño, fatiga, dolor muscular)', dose: 'Encuesta de 1 min antes del entrenamiento', effect: 'El mejor predictor de lesión inminente. Si el jugador reporta 3/5 o menos, reduce la carga ese día', phase: 'Diario (módulo Wellness)' },
+    ],
+    tip: 'La lesión más fácil de tratar es la que no ocurre. Los 10 minutos de prevención que haces HOY son los 3 meses de baja que no tendrás en febrero.',
   },
 ];
 
@@ -2016,7 +2366,7 @@ const SessionsView = ({
           const avgLoad = loads.length ? Math.round(loads.reduce((a, l) => a + (l.sessionLoad || 0), 0) / loads.length) : null;
           const col = tc(session.type);
           return (
-            <div key={session.id} className={cn('bg-slate-900 border rounded-[20px] p-5', col.border)}>
+            <div key={session.id} className={cn('bg-slate-900 border rounded-[20px] p-5 cursor-pointer hover:border-slate-500 transition-colors', col.border)} onClick={() => { setSelectedSessionTab('anotaciones'); setSelectedSession(session); }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded-md border inline-block mb-2', col.bg.split(' ')[0], col.text, col.border)}>{col.label}</span>
@@ -4379,20 +4729,28 @@ const PhysicalTestsView = ({
   testResults: PhysicalTestResult[];
   onSaveBulk: (d: any[]) => Promise<void>; showToast: (t: ToastType, m: string) => void;
 }) => {
+  type TestView = 'registro' | 'comparativa' | 'informe';
+  const [activeView, setActiveView] = useState<TestView>('registro');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTestId, setSelectedTestId] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [showReport, setShowReport] = useState(false);
+  const [compareTestId, setCompareTestId] = useState('');
   const players = subjects.filter(s => s.role === Role.PLAYER);
   const selectedTest = testDefinitions.find(t => t.id === selectedTestId);
 
   const handleSave = async () => {
     if (!selectedTestId) { showToast('warning', 'Selecciona un test'); return; }
-    const payloads = Object.entries(values).filter(([, v]) => v && parseFloat(v) > 0).map(([sid, v]) => ({ team_id: teamId, subject_id: sid, test_id: selectedTestId, date, value: parseFloat(v) }));
+    const payloads = Object.entries(values)
+      .filter(([, v]) => v && parseFloat(v) > 0)
+      .map(([sid, v]) => ({
+        team_id: teamId, subject_id: sid, test_id: selectedTestId,
+        date, value: parseFloat(v), notes: notes[sid] || '',
+      }));
     if (!payloads.length) { showToast('warning', 'Introduce al menos un resultado'); return; }
     setSaving(true);
-    try { await onSaveBulk(payloads); setValues({}); showToast('success', `${payloads.length} resultados guardados`); }
+    try { await onSaveBulk(payloads); setValues({}); setNotes({}); showToast('success', `${payloads.length} resultados guardados`); }
     catch { showToast('error', 'Error al guardar los resultados'); }
     finally { setSaving(false); }
   };
@@ -4426,13 +4784,126 @@ const PhysicalTestsView = ({
     }).filter(d => d.entries.length > 0);
   }, [testDefinitions, testResults, subjects, players]);
 
-  if (showReport) return (
+  // ── View header shared across all sub-views ──────────────────────────────
+  const viewHeader = (
+    <div className="flex items-center gap-2 flex-wrap">
+      {([
+        { id: 'registro', label: '📝 Registro' },
+        { id: 'comparativa', label: '📊 Comparativa' },
+        { id: 'informe', label: '🧠 Informe' },
+      ] as { id: TestView; label: string }[]).map(v => (
+        <button key={v.id} onClick={() => setActiveView(v.id)}
+          className={cn('px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all',
+            activeView === v.id
+              ? 'bg-orange-500 border-orange-500 text-slate-950'
+              : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300')}>
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (activeView === 'comparativa') {
+    const compareTest = testDefinitions.find(t => t.id === compareTestId);
+    // Build per-player history for selected test, sorted newest first
+    const playerHistory = players.map(p => {
+      const results = (testResults as any[])
+        .filter(r => r.testId === compareTestId && r.subjectId === p.id)
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const last = results[0] || null;
+      const prev = results[1] || null;
+      const delta = last && prev ? Number(last.value) - Number(prev.value) : null;
+      const lowerIsBetter = (BASKETBALL_TEST_BATTERY.find(t => t.name === compareTest?.name) as any)?.lowerIsBetter ?? false;
+      const improved = delta !== null ? (lowerIsBetter ? delta < 0 : delta > 0) : null;
+      return { player: p, last, prev, delta, improved };
+    }).filter(d => d.last !== null);
+
+    return (
+      <div className="space-y-5">
+        {viewHeader}
+        <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Selecciona el test a comparar</label>
+            <select value={compareTestId} onChange={e => setCompareTestId(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+              <option value="">Elige un test...</option>
+              {testDefinitions.map(t => <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>)}
+            </select>
+          </div>
+
+          {compareTestId && playerHistory.length === 0 && (
+            <div className="py-10 text-center text-slate-600 text-sm border-2 border-dashed border-slate-800 rounded-2xl">
+              Sin resultados registrados para este test todavía.
+            </div>
+          )}
+
+          {compareTestId && playerHistory.length > 0 && (
+            <div className="overflow-x-auto rounded-2xl border border-slate-800">
+              <table className="w-full text-left">
+                <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800">
+                  <tr>
+                    <th className="px-4 py-3">Jugador</th>
+                    <th className="px-4 py-3">Última medición</th>
+                    <th className="px-4 py-3">Medición anterior</th>
+                    <th className="px-4 py-3">Variación</th>
+                    <th className="px-4 py-3">Anotación</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {[...playerHistory].sort((a, b) => Number(b.last?.value || 0) - Number(a.last?.value || 0)).map(({ player, last, prev, delta, improved }) => (
+                    <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 bg-slate-800 rounded-lg flex items-center justify-center text-[9px] font-mono text-slate-500">
+                            {player.number || '—'}
+                          </span>
+                          <span className="text-sm font-bold text-white">{player.name} {player.lastName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="text-sm font-black text-orange-400">{last?.value} <span className="text-[9px] text-slate-600 font-normal">{compareTest?.unit}</span></p>
+                        <p className="text-[9px] text-slate-600 mt-0.5">{last ? new Date(last.date).toLocaleDateString('es-ES') : '—'}</p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {prev ? (
+                          <>
+                            <p className="text-sm text-slate-400">{prev.value} <span className="text-[9px] text-slate-600">{compareTest?.unit}</span></p>
+                            <p className="text-[9px] text-slate-600 mt-0.5">{new Date(prev.date).toLocaleDateString('es-ES')}</p>
+                          </>
+                        ) : <span className="text-[10px] text-slate-700 italic">Primera medición</span>}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {delta !== null ? (
+                          <div className={cn('flex items-center gap-1 font-black text-sm',
+                            improved ? 'text-emerald-400' : improved === false ? 'text-red-400' : 'text-slate-500')}>
+                            {improved ? '▲' : '▼'} {Math.abs(delta).toFixed(2)}
+                          </div>
+                        ) : <span className="text-slate-700 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3.5 max-w-[200px]">
+                        {(last as any)?.notes ? (
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-[10px] shrink-0">📌</span>
+                            <p className="text-[10px] text-slate-400 leading-relaxed">{(last as any).notes}</p>
+                          </div>
+                        ) : <span className="text-slate-700 text-[10px] italic">Sin anotación</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (activeView === 'informe') return (
     <div className="space-y-6">
+      {viewHeader}
       {/* Report header */}
       <div className="flex items-center gap-4">
-        <button onClick={() => setShowReport(false)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
-          <ChevronLeft size={16} /> Volver
-        </button>
         <div>
           <h2 className="text-xl font-black text-white">Informe de Condición Física</h2>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">Evaluación del equipo · {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
@@ -4524,8 +4995,12 @@ const PhysicalTestsView = ({
     </div>
   );
 
+  // Default: registro view
   return (
     <div className="space-y-5">
+      {viewHeader}
+
+      {/* Control bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-5 flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 space-y-1.5">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Test a evaluar</label>
@@ -4542,12 +5017,6 @@ const PhysicalTestsView = ({
         <button onClick={handleSave} disabled={saving || !selectedTestId} className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20 whitespace-nowrap">
           {saving ? <><Loader2 size={14} className="animate-spin" />Guardando...</> : <><Save size={14} />Guardar</>}
         </button>
-        {testResults.length > 0 && (
-          <button onClick={() => setShowReport(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl text-xs font-black uppercase hover:bg-purple-500/20 transition-all whitespace-nowrap">
-            <BrainCircuit size={14} /> Informe
-          </button>
-        )}
       </div>
 
       {testDefinitions.length === 0 ? (
@@ -4560,23 +5029,29 @@ const PhysicalTestsView = ({
           <table className="w-full text-left">
             <thead className="bg-slate-950/50 text-[8px] font-bold text-slate-600 uppercase tracking-widest border-b border-slate-800">
               <tr>
-                <th className="px-6 py-3">#</th>
-                <th className="px-6 py-3">Jugador</th>
-                <th className="px-6 py-3">Resultado ({selectedTest?.unit || '—'})</th>
+                <th className="px-5 py-3">#</th>
+                <th className="px-5 py-3">Jugador</th>
+                <th className="px-5 py-3">Resultado ({selectedTest?.unit || '—'})</th>
+                <th className="px-5 py-3">Anotación <span className="text-slate-700 font-normal normal-case">(lesión, molestia, contexto…)</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
               {players.map(p => (
                 <tr key={p.id} className="hover:bg-slate-950/30 transition-colors">
-                  <td className="px-6 py-3.5 text-[10px] font-mono text-slate-600">#{p.number}</td>
-                  <td className="px-6 py-3.5 font-bold text-sm text-white">{p.name} {p.lastName}</td>
-                  <td className="px-6 py-3.5">
+                  <td className="px-5 py-3 text-[10px] font-mono text-slate-600">#{p.number}</td>
+                  <td className="px-5 py-3 font-bold text-sm text-white whitespace-nowrap">{p.name} {p.lastName}</td>
+                  <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <input type="number" step="0.01" placeholder="0.00" disabled={!selectedTestId} value={values[p.id] || ''}
                         onChange={e => setValues(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        className="w-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 disabled:opacity-40" />
+                        className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 disabled:opacity-40" />
                       {selectedTest && <span className="text-xs text-slate-600">{selectedTest.unit}</span>}
                     </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <input type="text" placeholder="Ej: Venía de esguince, molestia rodilla..." disabled={!selectedTestId} value={notes[p.id] || ''}
+                      onChange={e => setNotes(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      className="w-full min-w-[180px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-orange-500/40 disabled:opacity-40 placeholder:text-slate-700" />
                   </td>
                 </tr>
               ))}
@@ -4746,12 +5221,14 @@ const PrepFisicaView = ({
   onAddTestDefinition: (def: { name: string; unit: string }) => Promise<void>;
   showToast: (t: ToastType, m: string) => void;
 }) => {
-  type PTab = 'objetivos' | 'zonas' | 'fuerza' | 'categorias' | 'tests';
+  type PTab = 'objetivos' | 'zonas' | 'fuerza' | 'categorias' | 'tests' | 'prevencion';
   const [activeTab, setActiveTab] = useState<PTab>('objetivos');
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [selectedForce, setSelectedForce] = useState<string>('fmaxima');
   const [selectedCategory, setSelectedCategory] = useState<string>('cadete');
+  const [daysPerWeek, setDaysPerWeek] = useState<number>(3);
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
+  const [testCategoryFilter, setTestCategoryFilter] = useState<string>('all');
   const [seeding, setSeeding] = useState(false);
 
   const selectedCycle = FORCE_CYCLES.find(c => c.id === selectedForce) || FORCE_CYCLES[2];
@@ -4775,6 +5252,7 @@ const PrepFisicaView = ({
     { id: 'zonas',       label: '⚡ Zonas & Métodos' },
     { id: 'fuerza',      label: '💪 Fuerza' },
     { id: 'categorias',  label: '👥 Categorías' },
+    { id: 'prevencion',  label: '🛡️ Prevención' },
     { id: 'tests',       label: '📐 Tests' },
   ];
 
@@ -5150,7 +5628,10 @@ const PrepFisicaView = ({
 
                   {/* Session structure */}
                   <SectionCard className="space-y-3">
-                    <h4 className="font-black text-white text-sm">Estructura de sesión recomendada</h4>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-black text-white text-sm">Estructura de sesión recomendada</h4>
+                      <span className="text-[8px] bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold">Solo bloque físico previo a pista</span>
+                    </div>
                     {catDetail.sessionStructure.map((block: any, i: number) => (
                       <div key={i} className="flex items-start gap-3 py-2.5 border-b border-slate-800/40 last:border-0">
                         <div className={cn('shrink-0 text-[9px] font-black px-2 py-1 rounded-lg', catDetail.color.bg, catDetail.color.text, catDetail.color.border, 'border')}>
@@ -5162,6 +5643,52 @@ const PrepFisicaView = ({
                         </div>
                       </div>
                     ))}
+                    <p className="text-[9px] text-slate-600 pt-2">🏀 Después de este bloque físico viene la sesión de pista (técnica, táctica y partido).</p>
+                  </SectionCard>
+
+                  {/* Weekly plan by days */}
+                  <SectionCard className="space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <h4 className="font-black text-white text-sm">Plan semanal por días de entrenamiento</h4>
+                      <div className="flex gap-1">
+                        {[2, 3, 4, 5].map(d => (
+                          <button key={d} onClick={() => setDaysPerWeek(d)}
+                            className={cn('w-8 h-8 rounded-lg text-xs font-black transition-all border',
+                              daysPerWeek === d
+                                ? cn(catDetail.color.bg, catDetail.color.text, catDetail.color.border)
+                                : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500')}>
+                            {d}d
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-slate-500 -mt-2">Días de preparación física por semana (pista no incluida)</p>
+                    {(() => {
+                      const plan = WEEKLY_PLANS[catDetail.id]?.[daysPerWeek];
+                      if (!plan) return <p className="text-xs text-slate-600 italic">No hay plan disponible para esta combinación.</p>;
+                      const intensityColors: Record<string, string> = {
+                        alta: 'bg-red-500/15 border-red-500/25 text-red-400',
+                        media: 'bg-orange-500/15 border-orange-500/25 text-orange-400',
+                        baja: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
+                        libre: 'bg-slate-700 border-slate-600 text-slate-400',
+                      };
+                      return (
+                        <div className="space-y-3">
+                          {plan.map((day, i) => (
+                            <div key={i} className="border border-slate-800 rounded-xl p-4 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-black text-white">{day.day}</p>
+                                <span className={cn('text-[8px] px-2 py-0.5 rounded-full border font-bold uppercase', intensityColors[day.intensity])}>
+                                  {day.intensity}
+                                </span>
+                              </div>
+                              <p className={cn('text-[10px] font-bold', catDetail.color.text)}>{day.focus}</p>
+                              <p className="text-[10px] text-slate-500 leading-relaxed">{day.details}</p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </SectionCard>
 
                   {/* Warning */}
@@ -5171,6 +5698,66 @@ const PrepFisicaView = ({
                   </div>
                 </motion.div>
               )}
+            </div>
+          )}
+
+          {/* ─── PREVENCIÓN ─── */}
+          {activeTab === 'prevencion' && (
+            <div className="space-y-4">
+              <SectionCard>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  La prevención de lesiones en baloncesto reduce la incidencia hasta un 62% con protocolos correctos. Estas son las áreas prioritarias, los mecanismos de lesión y los protocolos con mayor evidencia científica para cada una.
+                </p>
+              </SectionCard>
+
+              {INJURY_PREVENTION.map(area => (
+                <div key={area.id} className="bg-slate-900 border border-slate-800 rounded-[20px] overflow-hidden">
+                  {/* Area header */}
+                  <div className="p-5 border-b border-slate-800">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{area.icon}</span>
+                        <div>
+                          <h3 className="font-black text-white text-sm">{area.area}</h3>
+                          <p className="text-[9px] text-slate-500 mt-0.5">{area.prevalence}</p>
+                        </div>
+                      </div>
+                      <span className={cn('text-[8px] font-black px-2.5 py-1 rounded-full border shrink-0', area.riskColor,
+                        area.risk === 'Muy alto' ? 'bg-red-500/10 border-red-500/20' :
+                        area.risk === 'Alto' ? 'bg-orange-500/10 border-orange-500/20' :
+                        area.risk === 'Medio' ? 'bg-yellow-500/10 border-yellow-500/20' :
+                        'bg-purple-500/10 border-purple-500/20')}>
+                        {area.risk}
+                      </span>
+                    </div>
+                    <div className="mt-3 bg-slate-800/60 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mecanismo de lesión</p>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{area.mechanism}</p>
+                    </div>
+                  </div>
+
+                  {/* Protocols */}
+                  <div className="p-5 space-y-3">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Protocolos de prevención</p>
+                    {area.methods.map((m, i) => (
+                      <div key={i} className="border border-slate-800 rounded-xl p-3.5 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-bold text-white leading-tight">{m.name}</p>
+                          <span className="text-[8px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-lg text-slate-400 shrink-0 font-bold">{m.phase}</span>
+                        </div>
+                        <p className="text-[9px] text-orange-400 font-bold">{m.dose}</p>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">{m.effect}</p>
+                      </div>
+                    ))}
+
+                    {/* Coach tip */}
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3.5 flex gap-2.5">
+                      <span className="text-base shrink-0">💡</span>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{area.tip}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -5190,7 +5777,7 @@ const PrepFisicaView = ({
                 </button>
               </div>
 
-              {/* Category filter */}
+              {/* Category filter — functional */}
               <div className="flex gap-2 flex-wrap">
                 {[
                   { id: 'all', label: 'Todos' },
@@ -5198,19 +5785,20 @@ const PrepFisicaView = ({
                   { id: 'explosividad', label: '⬆️ Explosividad' },
                   { id: 'velocidad', label: '⚡ Velocidad' },
                   { id: 'fuerza', label: '💪 Fuerza' },
-                ].map(f => {
-                  const active = (expandedTest === null || true) && false; // just styling
-                  return (
-                    <button key={f.id} onClick={() => {/* filter not needed — all shown */}}
-                      className="text-[9px] px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-500 font-bold uppercase cursor-default">
-                      {f.label}
-                    </button>
-                  );
-                })}
+                ].map(f => (
+                  <button key={f.id}
+                    onClick={() => setTestCategoryFilter(f.id === testCategoryFilter ? 'all' : f.id)}
+                    className={cn('text-[9px] px-3 py-1.5 rounded-lg border font-bold uppercase transition-all',
+                      testCategoryFilter === f.id
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                        : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300')}>
+                    {f.label}
+                  </button>
+                ))}
               </div>
 
               <div className="space-y-3">
-                {BASKETBALL_TEST_BATTERY.map((test, i) => {
+                {BASKETBALL_TEST_BATTERY.filter((t: any) => testCategoryFilter === 'all' || t.category === testCategoryFilter).map((test, i) => {
                   const exists = testDefinitions.some(d => d.name.toLowerCase() === test.name.toLowerCase());
                   const isExpanded = expandedTest === test.name;
                   const catColors: Record<string, string> = {
@@ -5268,6 +5856,21 @@ const PrepFisicaView = ({
                             <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-2">💬 Qué decirles a los jugadores</p>
                             <p className="text-xs text-slate-400 leading-relaxed italic">{test.playerBriefing}</p>
                           </div>
+
+                          {/* Audio link (if available) */}
+                          {(test as any).audioUrl && (
+                            <a href={(test as any).audioUrl} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/20 rounded-xl hover:bg-purple-500/15 transition-all group">
+                              <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
+                                <span className="text-base">🎵</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[9px] font-bold text-purple-400 uppercase tracking-widest">Audio oficial del test</p>
+                                <p className="text-xs text-slate-300 font-semibold mt-0.5">{(test as any).audioLabel}</p>
+                              </div>
+                              <span className="text-[9px] text-purple-400 font-bold group-hover:translate-x-0.5 transition-transform">▶ Abrir</span>
+                            </a>
+                          )}
 
                           {/* Scoring table */}
                           <div>
@@ -5664,14 +6267,28 @@ export default function App() {
   };
 
   const fetchCoachData = async () => {
-    if (!isSupabaseConfigured) return;
-    const { data: teamsData } = await supabase.from('teams').select('*').order('created_at', { ascending: false });
-    if (teamsData) {
-      const mapped = teamsData.map(mapTeam);
-      setTeams(mapped);
-      if (mapped.length > 0 && !activeTeam) { setActiveTeam(mapped[0]); setAppStatus('DASHBOARD'); }
-      else if (mapped.length === 0) setAppStatus('TEAM_SELECT');
-    }
+    if (!isSupabaseConfigured || !currentUser?.id) return;
+    // 1. Teams I own (coach_id = me)
+    const { data: ownedTeams } = await supabase
+      .from('teams').select('*')
+      .eq('coach_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    // 2. Teams I'm a staff member of
+    const { data: memberships } = await supabase
+      .from('team_members').select('team_id')
+      .eq('coach_id', currentUser.id)
+      .eq('role', 'staff');
+    const memberTeamIds = (memberships || []).map((m: any) => m.team_id);
+    const { data: memberTeams } = memberTeamIds.length
+      ? await supabase.from('teams').select('*').in('id', memberTeamIds)
+      : { data: [] };
+    // Merge, deduplicate
+    const all = [...(ownedTeams || []), ...(memberTeams || [])];
+    const unique = all.filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i);
+    const mapped = unique.map(mapTeam);
+    setTeams(mapped);
+    if (mapped.length > 0 && !activeTeam) { setActiveTeam(mapped[0]); setAppStatus('DASHBOARD'); }
+    else if (mapped.length === 0) setAppStatus('TEAM_SELECT');
   };
 
   const fetchTeamData = async (teamId: string) => {
@@ -5789,11 +6406,52 @@ export default function App() {
   };
   const handleSwitchTeam = () => { fetchCoachData(); setAppStatus('TEAM_SELECT'); };
 
+  const handleDeleteTeam = async (teamId: string) => {
+    if (!isSupabaseConfigured) return;
+    // Cascade deletes all related data via FK ON DELETE CASCADE in schema
+    const { error } = await supabase.from('teams').delete().eq('id', teamId);
+    if (error) throw new Error('Error al eliminar el equipo: ' + error.message);
+    setTeams(prev => prev.filter(t => t.id !== teamId));
+    if (activeTeam?.id === teamId) { setActiveTeam(null); }
+    showToast('success', 'Equipo eliminado correctamente');
+    await fetchCoachData();
+  };
+
+  const handleInviteToTeam = async (teamId: string, email: string) => {
+    if (!isSupabaseConfigured) return;
+    // Find coach by email
+    const { data: coach, error: findErr } = await supabase
+      .from('coaches').select('id, name, email').eq('email', email).single();
+    if (findErr || !coach) throw new Error('No existe ninguna cuenta con ese email. Pídele que se registre primero.');
+    if (coach.id === currentUser?.id) throw new Error('No puedes invitarte a ti mismo.');
+    // Check not already a member
+    const { data: existing } = await supabase
+      .from('team_members').select('id').eq('team_id', teamId).eq('coach_id', coach.id).single();
+    if (existing) throw new Error('Este entrenador ya tiene acceso al equipo.');
+    // Insert
+    const { error } = await supabase.from('team_members').insert([{
+      team_id: teamId, coach_id: coach.id, role: 'staff', invited_by: currentUser?.id,
+    }]);
+    if (error) throw new Error('Error al invitar: ' + error.message);
+    const teamName = teams.find(t => t.id === teamId)?.name || 'el equipo';
+    showToast('success', `✅ ${coach.name || coach.email} añadido al staff de ${teamName}`);
+  };
+
   const handleAddTeam = async (newTeam: Partial<Team>) => {
     if (!isSupabaseConfigured) return;
-    const { data, error } = await supabase.from('teams').insert([{ name: newTeam.name, category: newTeam.category, sport: newTeam.sport || 'BASKETBALL', players_count: 0 }]).select();
+    const { data, error } = await supabase.from('teams').insert([{
+      name: newTeam.name, category: newTeam.category,
+      sport: newTeam.sport || 'BASKETBALL', players_count: 0,
+      coach_id: currentUser?.id,
+    }]).select();
     if (error) { showToast('error', 'Error al crear el equipo: ' + error.message); return; }
-    if (data?.[0]) { const t = mapTeam(data[0]); setTeams(prev => [t, ...prev]); setActiveTeam(t); setAppStatus('DASHBOARD'); }
+    if (data?.[0]) {
+      // Register creator as owner in team_members
+      await supabase.from('team_members').insert([{
+        team_id: data[0].id, coach_id: currentUser?.id, role: 'owner',
+      }]);
+      const t = mapTeam(data[0]); setTeams(prev => [t, ...prev]); setActiveTeam(t); setAppStatus('DASHBOARD');
+    }
   };
 
   // ── Training schedule handlers ──────────────────────────────────────────
@@ -6008,7 +6666,7 @@ export default function App() {
   );
 
   if (appStatus === 'LOGIN') return <LoginView onLogin={handleLogin} onRegister={handleRegister} onForgotPin={handleForgotPin} error={loginError} />;
-  if (appStatus === 'TEAM_SELECT') return <TeamSelectionView teams={teams} onSelect={handleTeamSelect} onRegisterTeam={handleAddTeam} currentUser={currentUser} onLogout={handleLogout} />;
+  if (appStatus === 'TEAM_SELECT') return <TeamSelectionView teams={teams} onSelect={handleTeamSelect} onRegisterTeam={handleAddTeam} onInvite={handleInviteToTeam} onDeleteTeam={handleDeleteTeam} currentUser={currentUser} onLogout={handleLogout} />;
   if (appStatus === 'PLAYER_DASHBOARD' && currentUser) return <PlayerDashboardView player={currentUser} incidents={incidents.filter(i => i.subjectId === currentUser.id)} evaluations={evaluations.filter(e => e.subjectId === currentUser.id)} onLogout={handleLogout} />;
 
   const teamSubjects = subjects.filter(s => s.teamId === activeTeam?.id);

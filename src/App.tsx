@@ -6245,7 +6245,7 @@ export default function App() {
         const coach = JSON.parse(savedCoach);
         setCurrentUser(coach);
         setAppStatus('TEAM_SELECT');
-        fetchCoachData();
+        fetchCoachData(coach.id); // pass ID directly — state not set yet
       } catch { localStorage.removeItem('sh_coach'); setAppStatus('LOGIN'); }
     } else {
       setAppStatus('LOGIN');
@@ -6266,17 +6266,18 @@ export default function App() {
     fetchCoachData();
   };
 
-  const fetchCoachData = async () => {
-    if (!isSupabaseConfigured || !currentUser?.id) return;
+  const fetchCoachData = async (coachIdParam?: string) => {
+    const id = coachIdParam || currentUser?.id;
+    if (!isSupabaseConfigured || !id) return;
     // 1. Teams I own (coach_id = me)
     const { data: ownedTeams } = await supabase
       .from('teams').select('*')
-      .eq('coach_id', currentUser.id)
+      .eq('coach_id', id)
       .order('created_at', { ascending: false });
     // 2. Teams I'm a staff member of
     const { data: memberships } = await supabase
       .from('team_members').select('team_id')
-      .eq('coach_id', currentUser.id)
+      .eq('coach_id', id)
       .eq('role', 'staff');
     const memberTeamIds = (memberships || []).map((m: any) => m.team_id);
     const { data: memberTeams } = memberTeamIds.length
@@ -6344,7 +6345,7 @@ export default function App() {
         setCurrentUser(coach);
         localStorage.setItem('sh_coach', JSON.stringify(coach));
         setAppStatus('TEAM_SELECT');
-        fetchCoachData();
+        fetchCoachData(coach.id);
       } else setLoginError('Modo local: usa admin@sports.pro / 1234');
       return;
     }
@@ -6362,7 +6363,7 @@ export default function App() {
     setCurrentUser(data);
     localStorage.setItem('sh_coach', JSON.stringify(data));
     setAppStatus('TEAM_SELECT');
-    fetchCoachData();
+    fetchCoachData(data.id);
   };
 
   const handleRegister = async (email: string, pin: string, name: string) => {
@@ -6381,7 +6382,7 @@ export default function App() {
     localStorage.setItem('sh_coach', JSON.stringify(data));
     showToast('success', `¡Bienvenido ${name}! Cuenta creada correctamente.`);
     setAppStatus('TEAM_SELECT');
-    fetchCoachData();
+    fetchCoachData(data.id);
   };
 
   const handleForgotPin = async (email: string, newPin: string) => {

@@ -6290,7 +6290,14 @@ export default function App() {
     // Merge, deduplicate
     const all = [...(ownedTeams || []), ...(memberTeams || [])];
     const unique = all.filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i);
-    const mapped = unique.map(mapTeam);
+    // Fetch real player counts from subjects table
+    const teamIds = unique.map(t => t.id);
+    const { data: subjectCounts } = teamIds.length
+      ? await supabase.from('subjects').select('team_id').in('team_id', teamIds)
+      : { data: [] };
+    const countMap: Record<string, number> = {};
+    (subjectCounts || []).forEach((s: any) => { countMap[s.team_id] = (countMap[s.team_id] || 0) + 1; });
+    const mapped = unique.map(t => ({ ...mapTeam(t), playersCount: countMap[t.id] || 0 }));
     setTeams(mapped);
     if (mapped.length > 0 && !activeTeam) { setActiveTeam(mapped[0]); setAppStatus('DASHBOARD'); }
     else if (mapped.length === 0) setAppStatus('TEAM_SELECT');

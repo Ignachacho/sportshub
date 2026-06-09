@@ -301,7 +301,7 @@ const LoginView = ({
               <div className="relative mb-5">
                 <div className="absolute inset-[-4px] bg-orange-500/40 rounded-3xl blur-xl" />
                 <div className="relative w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-[18px] flex items-center justify-center shadow-[0_8px_32px_rgba(249,115,22,0.5)]">
-                  <span className="font-black text-white text-2xl tracking-tight">SH</span>
+                  <span className="font-black text-white text-2xl tracking-tight">CK</span>
                 </div>
               </div>
               <h1 className="text-2xl font-black text-white mb-1 tracking-tight">{title}</h1>
@@ -448,7 +448,7 @@ const LoginView = ({
           {/* Footer */}
           <div className="flex items-center justify-center gap-4 mt-5 text-[9px] text-slate-600 font-mono uppercase tracking-wider">
             <span>GDPR / LOPD</span><span className="text-slate-700">•</span>
-            <span>Sports Hub v2.5</span><span className="text-slate-700">•</span>
+            <span>CoachKit v2.5</span><span className="text-slate-700">•</span>
             <span>Solo Personal Técnico</span>
           </div>
         </motion.div>
@@ -610,8 +610,8 @@ const TeamSelectionView = ({
         {/* Header */}
         <div className="flex justify-between items-center mb-16">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center font-black text-slate-950">SH</div>
-            <span className="font-black text-white tracking-tight">Sports Hub</span>
+            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center font-black text-slate-950">CK</div>
+            <span className="font-black text-white tracking-tight">CoachKit</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
@@ -736,7 +736,7 @@ const Sidebar = ({
         <div className="flex items-center gap-3 cursor-pointer" onClick={onSwitchTeam}>
           <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-orange-500/25">SH</div>
           <div>
-            <p className="font-black text-sm text-white tracking-tight leading-none">Sports Hub</p>
+            <p className="font-black text-sm text-white tracking-tight leading-none">CoachKit</p>
             <p className="text-[8px] text-slate-600 uppercase tracking-widest font-mono mt-0.5">v2.5 Pro</p>
           </div>
         </div>
@@ -843,7 +843,7 @@ const Header = ({ title, onAdd }: { title: string; onAdd?: () => void }) => {
   return (
     <div className="flex justify-between items-end mb-8 pt-2">
       <div>
-        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.3em] mb-1">Sports Hub Pro</p>
+        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.3em] mb-1">CoachKit Pro</p>
         <h1 className="text-3xl font-black text-white tracking-tight">{cfg.title}</h1>
         {cfg.subtitle && <p className="text-sm text-slate-500 mt-1">{cfg.subtitle}</p>}
       </div>

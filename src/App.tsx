@@ -6256,6 +6256,10 @@ export default function App() {
     if (activeTeam?.id) fetchTeamData(activeTeam.id);
   }, [activeTeam?.id]);
 
+  useEffect(() => {
+    document.title = activeTeam ? `${activeTeam.name} — CoachKit` : 'CoachKit';
+  }, [activeTeam]);
+
   // ─────────────────────────────────────────────────────────────────────────
   // DATA FETCHING
   // ─────────────────────────────────────────────────────────────────────────

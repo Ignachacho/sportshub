@@ -6360,13 +6360,12 @@ export default function App() {
       } else setLoginError('Modo local: usa admin@sports.pro / 1234');
       return;
     }
-    // Query coaches table directly — no supabase.auth needed
-    const { data, error } = await supabase
-      .from('coaches')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .eq('pin', pin)
-      .single();
+    // Use secure bcrypt-verified RPC function
+    const { data: rows, error } = await supabase.rpc('verify_coach_login', {
+      p_email: email.toLowerCase().trim(),
+      p_pin: pin,
+    });
+    const data = rows?.[0] ?? null;
     if (error || !data) {
       setLoginError('Credenciales incorrectas. Verifica tu email y contraseña.');
       return;
@@ -6383,11 +6382,10 @@ export default function App() {
     // Check email not already taken
     const { data: existing } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
     if (existing) { setLoginError('Este email ya tiene una cuenta registrada.'); return; }
-    const { data, error } = await supabase
-      .from('coaches')
-      .insert([{ email: email.toLowerCase().trim(), name, pin }])
-      .select()
-      .single();
+    const { data: rows2, error } = await supabase.rpc('create_coach', {
+      p_email: email.toLowerCase().trim(), p_name: name, p_pin: pin,
+    });
+    const data = rows2?.[0] ?? null;
     if (error) { setLoginError('Error al crear la cuenta: ' + error.message); return; }
     setCurrentUser(data);
     localStorage.setItem('sh_coach', JSON.stringify(data));
@@ -6401,7 +6399,9 @@ export default function App() {
     if (!isSupabaseConfigured) { setLoginError('Recuperación no disponible en modo local'); return; }
     const { data: coach } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
     if (!coach) { setLoginError('No se encontró ninguna cuenta con ese email.'); return; }
-    const { error } = await supabase.from('coaches').update({ pin: newPin }).eq('email', email.toLowerCase().trim());
+    const { error } = await supabase.rpc('reset_coach_pin', {
+      p_email: email.toLowerCase().trim(), p_new_pin: newPin,
+    });
     if (error) { setLoginError('Error al actualizar la contraseña: ' + error.message); return; }
     showToast('success', 'Contraseña actualizada. Ya puedes iniciar sesión.');
     setLoginError(null);

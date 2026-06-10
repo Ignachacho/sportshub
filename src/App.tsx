@@ -140,13 +140,13 @@ const calculateRiskScore = (wellness: number, load: number): number => {
 
 const getWellnessColor = (val: number) => {
   if (val <= 2) return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-  if (val <= 4) return "bg-orange-500/20 text-orange-400 border border-orange-500/30";
+  if (val <= 4) return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
   return "bg-red-500/20 text-red-500 border border-red-500/30";
 };
 
 const getRiskColor = (score: number) => {
   if (score >= 75) return { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500/30', label: 'CRÍTICO' };
-  if (score >= 55) return { bg: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500/30', label: 'ALERTA' };
+  if (score >= 55) return { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500/30', label: 'ALERTA' };
   if (score >= 35) return { bg: 'bg-yellow-500', text: 'text-yellow-500', border: 'border-yellow-500/30', label: 'VIGILAR' };
   return { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500/30', label: 'ÓPTIMO' };
 };
@@ -191,7 +191,7 @@ const ToastContainer = ({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
   const colorMap = {
     success: 'bg-slate-900 border-emerald-500/40 text-emerald-300',
     error: 'bg-slate-900 border-red-500/40 text-red-300',
-    warning: 'bg-slate-900 border-orange-500/40 text-orange-300',
+    warning: 'bg-slate-900 border-emerald-500/40 text-emerald-300',
     info: 'bg-slate-900 border-blue-500/40 text-blue-300',
   };
   return (
@@ -274,8 +274,8 @@ const LoginView = ({
     <div className="min-h-screen bg-[#070b12] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-[700px] h-[700px] bg-orange-600/20 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '5s' }} />
-        <div className="absolute -bottom-32 -right-32 w-[600px] h-[600px] bg-orange-500/15 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '7s' }} />
+        <div className="absolute -top-32 -left-32 w-[700px] h-[700px] bg-emerald-600/20 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '5s' }} />
+        <div className="absolute -bottom-32 -right-32 w-[600px] h-[600px] bg-emerald-500/15 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '7s' }} />
         <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-amber-600/8 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '9s' }} />
         {/* Subtle grid */}
         <div className="absolute inset-0 opacity-[0.025]" style={{
@@ -299,13 +299,13 @@ const LoginView = ({
             {/* Logo + Header */}
             <div className="flex flex-col items-center mb-8">
               <div className="relative mb-5">
-                <div className="absolute inset-[-4px] bg-orange-500/40 rounded-3xl blur-xl" />
-                <div className="relative w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-[18px] flex items-center justify-center shadow-[0_8px_32px_rgba(249,115,22,0.5)]">
+                <div className="absolute inset-[-4px] bg-emerald-500/40 rounded-3xl blur-xl" />
+                <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[18px] flex items-center justify-center shadow-[0_8px_32px_rgba(16,185,129,0.5)]">
                   <span className="font-black text-white text-2xl tracking-tight">CK</span>
                 </div>
               </div>
               <h1 className="text-2xl font-black text-white mb-1 tracking-tight">{title}</h1>
-              <p className="text-[10px] font-mono text-orange-400/80 uppercase tracking-[0.3em]">{sub}</p>
+              <p className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-[0.3em]">{sub}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -315,7 +315,7 @@ const LoginView = ({
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="coach@club.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-orange-500/50 focus:bg-white/8 outline-none transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 focus:bg-white/8 outline-none transition-all"
                 />
               </div>
 
@@ -331,7 +331,7 @@ const LoginView = ({
                     <input
                       type="text" value={name} onChange={e => setName(e.target.value)}
                       placeholder="Nombre y Apellidos"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
                     />
                   </motion.div>
                 )}
@@ -344,7 +344,7 @@ const LoginView = ({
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
                     {mode === 'login' && (
                       <button type="button" onClick={() => switchMode('forgot')}
-                        className="text-[10px] text-orange-400 hover:text-orange-300 font-semibold transition-colors">
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
                         ¿La olvidaste?
                       </button>
                     )}
@@ -353,7 +353,7 @@ const LoginView = ({
                     <input
                       type={showPin ? 'text' : 'password'} value={pin} onChange={e => setPin(e.target.value)} required
                       placeholder="••••••••"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 pr-12 text-white text-sm placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 pr-12 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
                     />
                     <button type="button" onClick={() => setShowPin(!showPin)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1">
@@ -376,7 +376,7 @@ const LoginView = ({
                       <input
                         type="password" value={newPin} onChange={e => setNewPin(e.target.value)} required
                         placeholder="Mínimo 4 caracteres"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -384,12 +384,12 @@ const LoginView = ({
                       <input
                         type="password" value={confirmPin} onChange={e => setConfirmPin(e.target.value)} required
                         placeholder="Repite la contraseña"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-orange-500/50 outline-none transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
                       />
                     </div>
-                    <div className="flex items-start gap-2.5 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3.5">
-                      <Info size={13} className="text-orange-400 shrink-0 mt-0.5" />
-                      <p className="text-orange-300/90 text-[11px] leading-relaxed">
+                    <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5">
+                      <Info size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <p className="text-emerald-300/90 text-[11px] leading-relaxed">
                         Si tu email está registrado en el sistema podrás actualizar tu contraseña directamente.
                       </p>
                     </div>
@@ -422,7 +422,7 @@ const LoginView = ({
 
               {/* CTA button */}
               <button type="submit"
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-[0_8px_24px_rgba(249,115,22,0.35)] hover:shadow-[0_12px_36px_rgba(249,115,22,0.5)] hover:-translate-y-0.5 active:translate-y-0 mt-1"
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-[0_8px_24px_rgba(16,185,129,0.35)] hover:shadow-[0_12px_36px_rgba(16,185,129,0.5)] hover:-translate-y-0.5 active:translate-y-0 mt-1"
               >
                 {btn}
               </button>
@@ -437,7 +437,7 @@ const LoginView = ({
                 )}
                 {mode === 'login' && (
                   <button type="button" onClick={() => switchMode('register')}
-                    className="text-xs text-orange-400 hover:text-orange-300 font-semibold transition-colors">
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
                     ¿Primera vez? Regístrate →
                   </button>
                 )}
@@ -533,8 +533,8 @@ const TeamSelectionView = ({
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="bg-slate-900 border border-slate-800 rounded-[28px] p-8 w-full max-w-md shadow-2xl">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center">
-                <Users size={18} className="text-orange-400" />
+              <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center">
+                <Users size={18} className="text-emerald-400" />
               </div>
               <div>
                 <h3 className="font-black text-white text-lg">Invitar al staff</h3>
@@ -550,7 +550,7 @@ const TeamSelectionView = ({
                 type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                 placeholder="hermana@gmail.com" autoFocus
                 onKeyDown={e => e.key === 'Enter' && handleInviteSubmit()}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500 transition-colors" />
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-colors" />
             </div>
             <div className="flex gap-3">
               <button onClick={() => { setInviteTeamId(null); setInviteEmail(''); }}
@@ -558,7 +558,7 @@ const TeamSelectionView = ({
                 Cancelar
               </button>
               <button onClick={handleInviteSubmit} disabled={inviteLoading || !inviteEmail.trim()}
-                className="flex-1 py-3 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20">
+                className="flex-1 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
                 {inviteLoading ? <><Loader2 size={13} className="animate-spin" />Invitando...</> : <>Invitar</>}
               </button>
             </div>
@@ -605,12 +605,12 @@ const TeamSelectionView = ({
           </motion.div>
         </div>
       )}
-      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center mb-16">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center font-black text-slate-950">CK</div>
+            <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center font-black text-slate-950">CK</div>
             <span className="font-black text-white tracking-tight">CoachKit</span>
           </div>
           <div className="flex items-center gap-4">
@@ -628,23 +628,23 @@ const TeamSelectionView = ({
           <div className="flex-1 flex items-center justify-center">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md bg-slate-900 border border-slate-800 p-10 rounded-[32px] shadow-2xl">
               <h2 className="text-2xl font-black text-white tracking-tight mb-8 flex items-center gap-3">
-                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center"><Plus size={18} className="text-slate-950" /></div>
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center"><Plus size={18} className="text-slate-950" /></div>
                 Nuevo Equipo
               </h2>
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nombre</label>
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="CB Dragons Academy" disabled={loading}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500 transition-colors" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-colors" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Categoría</label>
                   <input value={form.category} onChange={e => setForm({...form, category: e.target.value})} placeholder="Senior / U18 / Junior" disabled={loading}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500 transition-colors" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-colors" />
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button onClick={() => setIsCreating(false)} disabled={loading} className="flex-1 py-3.5 bg-slate-800 text-white rounded-xl text-[10px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
-                  <button onClick={handleCreate} disabled={loading || !form.name.trim()} className="flex-1 py-3.5 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-bold uppercase hover:bg-orange-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20">
+                  <button onClick={handleCreate} disabled={loading || !form.name.trim()} className="flex-1 py-3.5 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-bold uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
                     {loading && <Loader2 size={14} className="animate-spin" />}
                     {loading ? 'Creando...' : 'Crear Equipo'}
                   </button>
@@ -655,21 +655,21 @@ const TeamSelectionView = ({
         ) : (
           <div className="flex-1">
             <div className="mb-12">
-              <p className="text-xs font-mono text-orange-500 uppercase tracking-[0.3em] mb-3">Panel Multi-Equipo</p>
+              <p className="text-xs font-mono text-emerald-500 uppercase tracking-[0.3em] mb-3">Panel Multi-Equipo</p>
               <h2 className="text-5xl font-black tracking-tighter text-white max-w-lg leading-tight">Elige el equipo<br />para esta sesión.</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {teams.map(team => (
                 <div key={team.id} className="relative group">
                   <motion.button whileHover={{ y: -4 }} onClick={() => onSelect(team)}
-                    className="w-full bg-slate-900 border border-slate-800 p-8 rounded-[28px] text-left hover:border-orange-500/50 transition-all shadow-lg flex flex-col justify-between min-h-[240px]">
+                    className="w-full bg-slate-900 border border-slate-800 p-8 rounded-[28px] text-left hover:border-emerald-500/50 transition-all shadow-lg flex flex-col justify-between min-h-[240px]">
                     <div className="flex justify-between">
-                      <div className="w-12 h-12 bg-slate-950 border border-slate-700 rounded-2xl flex items-center justify-center text-xl font-black text-white group-hover:bg-orange-500 group-hover:text-slate-950 transition-all">{team.name.charAt(0)}</div>
+                      <div className="w-12 h-12 bg-slate-950 border border-slate-700 rounded-2xl flex items-center justify-center text-xl font-black text-white group-hover:bg-emerald-500 group-hover:text-slate-950 transition-all">{team.name.charAt(0)}</div>
                       <span className="text-[9px] font-mono bg-slate-800 text-slate-500 px-2 py-1 rounded-lg border border-slate-700 uppercase self-start">{team.sport || 'BBALL'}</span>
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-500 font-mono uppercase mb-1">{team.category}</p>
-                      <h3 className="text-xl font-black text-white mb-3 group-hover:text-orange-500 transition-colors leading-tight">{team.name}</h3>
+                      <h3 className="text-xl font-black text-white mb-3 group-hover:text-emerald-500 transition-colors leading-tight">{team.name}</h3>
                       <p className="text-[10px] text-slate-600 font-mono uppercase flex items-center gap-1.5"><Users size={10} /> {team.playersCount} jugadores</p>
                     </div>
                   </motion.button>
@@ -677,7 +677,7 @@ const TeamSelectionView = ({
                   <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
                     <button
                       onClick={e => { e.stopPropagation(); setInviteTeamId(team.id); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-orange-400 hover:border-orange-500/30 rounded-xl text-[9px] font-bold uppercase tracking-wide transition-all">
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 rounded-xl text-[9px] font-bold uppercase tracking-wide transition-all">
                       <Users size={10} /> Invitar
                     </button>
                     <button
@@ -688,9 +688,9 @@ const TeamSelectionView = ({
                   </div>
                 </div>
               ))}
-              <button onClick={() => setIsCreating(true)} className="border-2 border-dashed border-slate-800 p-8 rounded-[28px] flex flex-col items-center justify-center gap-3 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group min-h-[240px]">
+              <button onClick={() => setIsCreating(true)} className="border-2 border-dashed border-slate-800 p-8 rounded-[28px] flex flex-col items-center justify-center gap-3 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all group min-h-[240px]">
                 <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center group-hover:bg-slate-800 transition-all">
-                  <Plus size={22} className="text-slate-600 group-hover:text-orange-500 transition-colors" />
+                  <Plus size={22} className="text-slate-600 group-hover:text-emerald-500 transition-colors" />
                 </div>
                 <span className="text-[10px] font-bold text-slate-700 uppercase tracking-[0.2em] group-hover:text-slate-400 transition-colors">Nuevo Equipo</span>
               </button>
@@ -734,7 +734,7 @@ const Sidebar = ({
       {/* Logo */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onSwitchTeam}>
-          <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-orange-500/25">SH</div>
+          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-emerald-500/25">SH</div>
           <div>
             <p className="font-black text-sm text-white tracking-tight leading-none">CoachKit</p>
             <p className="text-[8px] text-slate-600 uppercase tracking-widest font-mono mt-0.5">v2.5 Pro</p>
@@ -755,7 +755,7 @@ const Sidebar = ({
       <div className="mb-6 p-3 bg-slate-950 border border-slate-800 rounded-2xl">
         <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1">Equipo activo</p>
         <p className="text-xs font-bold text-white truncate">{activeTeam?.name || '—'}</p>
-        <button onClick={onSwitchTeam} className="text-[9px] text-orange-500 font-bold mt-1 hover:underline uppercase tracking-wide">Cambiar equipo →</button>
+        <button onClick={onSwitchTeam} className="text-[9px] text-emerald-500 font-bold mt-1 hover:underline uppercase tracking-wide">Cambiar equipo →</button>
       </div>
 
       {/* Nav */}
@@ -765,7 +765,7 @@ const Sidebar = ({
             className={cn(
               "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
               activeTab === item.id
-                ? "bg-orange-500 text-slate-950 font-bold shadow-md shadow-orange-500/20"
+                ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
                 : "text-slate-400 hover:text-white hover:bg-slate-800"
             )}>
             <item.icon size={16} />
@@ -849,7 +849,7 @@ const Header = ({ title, onAdd }: { title: string; onAdd?: () => void }) => {
       </div>
       {cfg.action && onAdd && (
         <button onClick={onAdd}
-          className="flex items-center gap-2 bg-orange-500 text-slate-950 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all shadow-lg shadow-orange-500/20 active:scale-95">
+          className="flex items-center gap-2 bg-emerald-500 text-slate-950 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 active:scale-95">
           <Plus size={14} /> {cfg.action}
         </button>
       )}
@@ -921,14 +921,14 @@ const WellnessTestView = ({
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
           <p className="text-[9px] font-mono text-slate-500 uppercase tracking-wider mb-1">Pendientes</p>
-          <p className="text-2xl font-black text-orange-500">{players.length - todayFilledIds.size}</p>
+          <p className="text-2xl font-black text-emerald-500">{players.length - todayFilledIds.size}</p>
         </div>
         <div className="col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
           <div>
             <p className="text-[9px] font-mono text-slate-500 uppercase tracking-wider mb-1">Score actual del jugador</p>
-            <p className={cn("text-2xl font-black", totalScore === 0 ? 'text-slate-600' : totalScore <= 10 ? 'text-emerald-500' : totalScore <= 18 ? 'text-orange-500' : 'text-red-500')}>{avgScore}<span className="text-sm text-slate-600 ml-1">/5</span></p>
+            <p className={cn("text-2xl font-black", totalScore === 0 ? 'text-slate-600' : totalScore <= 10 ? 'text-emerald-500' : totalScore <= 18 ? 'text-emerald-500' : 'text-red-500')}>{avgScore}<span className="text-sm text-slate-600 ml-1">/5</span></p>
           </div>
-          <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-xs font-black border-2", totalScore === 0 ? 'border-slate-700 text-slate-600' : totalScore <= 10 ? 'border-emerald-500 text-emerald-500' : totalScore <= 18 ? 'border-orange-500 text-orange-500' : 'border-red-500 text-red-500')}>
+          <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-xs font-black border-2", totalScore === 0 ? 'border-slate-700 text-slate-600' : totalScore <= 10 ? 'border-emerald-500 text-emerald-500' : totalScore <= 18 ? 'border-emerald-500 text-emerald-500' : 'border-red-500 text-red-500')}>
             {totalScore === 0 ? '?' : totalScore <= 10 ? '✓' : totalScore <= 18 ? '!' : '⚠'}
           </div>
         </div>
@@ -944,7 +944,7 @@ const WellnessTestView = ({
               return (
                 <button key={p.id} onClick={() => setSelectedId(p.id)}
                   className={cn("w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all text-left",
-                    selectedId === p.id ? "bg-orange-500 text-slate-950" : "bg-slate-950 border border-slate-800 hover:border-slate-700 text-white")}>
+                    selectedId === p.id ? "bg-emerald-500 text-slate-950" : "bg-slate-950 border border-slate-800 hover:border-slate-700 text-white")}>
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] font-mono opacity-50">#{p.number}</span>
                     <span className="text-sm font-bold">{p.name}</span>
@@ -960,7 +960,7 @@ const WellnessTestView = ({
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="font-black text-white text-lg">{players.find(p => p.id === selectedId)?.name || 'Selecciona jugador'}</h3>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-orange-500/50" />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50" />
           </div>
           {fields.map(f => (
             <div key={f.key} className="space-y-2">
@@ -973,7 +973,7 @@ const WellnessTestView = ({
                   <button key={v} onClick={() => setForm(prev => ({ ...prev, [f.key]: v }))}
                     className={cn("flex-1 py-3 rounded-xl text-sm font-black transition-all border",
                       form[f.key] === v
-                        ? v <= 2 ? "bg-emerald-500 border-emerald-500 text-slate-950" : v <= 4 ? "bg-orange-500 border-orange-500 text-slate-950" : "bg-red-500 border-red-500 text-white"
+                        ? v <= 2 ? "bg-emerald-500 border-emerald-500 text-slate-950" : v <= 4 ? "bg-emerald-500 border-emerald-500 text-slate-950" : "bg-red-500 border-red-500 text-white"
                         : "bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600")}>
                     {v}
                   </button>
@@ -985,7 +985,7 @@ const WellnessTestView = ({
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notas del jugador (opcional)</label>
             <textarea value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="¿Algo a destacar hoy?" rows={2}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-orange-500/50" />
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-emerald-500/50" />
           </div>
           <button onClick={handleSave} disabled={!isComplete || saving}
             className={cn("w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
@@ -1043,7 +1043,7 @@ const SessionPlanTool = ({
   const phaseColors: Record<string, string> = {
     'Calentamiento':       'bg-blue-500/20 text-blue-400 border-blue-500/30',
     'Activación':          'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-    'Bloque Principal':    'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    'Bloque Principal':    'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     'Técnica Individual':  'bg-amber-500/20 text-amber-400 border-amber-500/30',
     'Táctica Colectiva':   'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     'Partido Controlado':  'bg-red-500/20 text-red-400 border-red-500/30',
@@ -1064,7 +1064,7 @@ const SessionPlanTool = ({
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-slate-800 bg-slate-950/40">
           <div>
-            <p className="text-[9px] font-mono text-orange-500 uppercase tracking-widest mb-1">Plan de Sesión</p>
+            <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest mb-1">Plan de Sesión</p>
             <h2 className="text-xl font-black text-white tracking-tight">{session.title}</h2>
             <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
               <Calendar size={11} /> {new Date(session.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -1083,7 +1083,7 @@ const SessionPlanTool = ({
           <div className="space-y-1.5">
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Objetivo de la Sesión</label>
             <input value={objective} onChange={e => setObjective(e.target.value)} placeholder="Ej: Mejora del tiro en movimiento, 4-out 1-in ofensivo..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
           </div>
 
           {/* Timeline visual */}
@@ -1117,11 +1117,11 @@ const SessionPlanTool = ({
                     {/* Move block up/down */}
                     <div className="flex flex-col gap-0.5">
                       <button disabled={idx === 0} onClick={() => moveBlock(block.id, 'up')}
-                        className="p-0.5 text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                        className="p-0.5 text-slate-700 hover:text-emerald-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
                         <ChevronUp size={12} />
                       </button>
                       <button disabled={idx === blocks.length - 1} onClick={() => moveBlock(block.id, 'down')}
-                        className="p-0.5 text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                        className="p-0.5 text-slate-700 hover:text-emerald-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
                         <ChevronDown size={12} />
                       </button>
                     </div>
@@ -1144,12 +1144,12 @@ const SessionPlanTool = ({
                     <label className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">Nombre del bloque</label>
                     <input value={block.name} onChange={e => updateBlock(block.id, 'name', e.target.value)}
                       placeholder="Ej: 4-out 1-in, Tiro en movimiento..."
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40" />
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">Participantes</label>
                     <select value={block.players} onChange={e => updateBlock(block.id, 'players', e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40">
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40">
                       <option>Todos</option>
                       {subjects.filter(s => s.role === Role.PLAYER).map(p => <option key={p.id}>{p.name}</option>)}
                       <option value="Bases">Bases</option>
@@ -1165,7 +1165,7 @@ const SessionPlanTool = ({
                   <div className="flex items-center justify-between">
                     <label className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">Tareas / Ejercicios</label>
                     <button onClick={() => updateBlock(block.id, 'tasks', [...(block.tasks || []), ''])}
-                      className="text-[8px] text-orange-500 hover:text-orange-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      className="text-[8px] text-emerald-500 hover:text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
                       <Plus size={10} /> Añadir tarea
                     </button>
                   </div>
@@ -1174,11 +1174,11 @@ const SessionPlanTool = ({
                       {/* Reorder task buttons */}
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button disabled={ti === 0} onClick={() => moveTask(block.id, ti, 'up')}
-                          className="text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                          className="text-slate-700 hover:text-emerald-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
                           <ChevronUp size={10} />
                         </button>
                         <button disabled={ti === (block.tasks || []).length - 1} onClick={() => moveTask(block.id, ti, 'down')}
-                          className="text-slate-700 hover:text-orange-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                          className="text-slate-700 hover:text-emerald-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
                           <ChevronDown size={10} />
                         </button>
                       </div>
@@ -1189,14 +1189,14 @@ const SessionPlanTool = ({
                           updateBlock(block.id, 'tasks', t);
                         }}
                         placeholder="Descripción del ejercicio..."
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-orange-500/40" />
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/40" />
                       <button onClick={() => updateBlock(block.id, 'tasks', (block.tasks || []).filter((_, i) => i !== ti))}
                         className="text-slate-700 hover:text-red-500 transition-colors shrink-0"><X size={12} /></button>
                     </div>
                   ))}
                   {(block.tasks || []).length === 0 && (
                     <button onClick={() => updateBlock(block.id, 'tasks', [''])}
-                      className="w-full py-2 border border-dashed border-slate-800 rounded-lg text-[9px] text-slate-700 hover:text-orange-400 hover:border-orange-500/30 transition-all uppercase tracking-widest">
+                      className="w-full py-2 border border-dashed border-slate-800 rounded-lg text-[9px] text-slate-700 hover:text-emerald-400 hover:border-emerald-500/30 transition-all uppercase tracking-widest">
                       + Añadir primera tarea
                     </button>
                   )}
@@ -1207,19 +1207,19 @@ const SessionPlanTool = ({
                   <label className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">Notas / Claves tácticas</label>
                   <input value={block.notes} onChange={e => updateBlock(block.id, 'notes', e.target.value)}
                     placeholder="Indicaciones clave, variantes, puntos de atención..."
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40" />
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40" />
                 </div>
               </div>
             ))}
           </div>
 
-          <button onClick={addBlock} className="w-full py-3 border-2 border-dashed border-slate-800 rounded-2xl text-[10px] font-bold text-slate-600 uppercase tracking-widest hover:border-orange-500/40 hover:text-orange-500 transition-all flex items-center justify-center gap-2">
+          <button onClick={addBlock} className="w-full py-3 border-2 border-dashed border-slate-800 rounded-2xl text-[10px] font-bold text-slate-600 uppercase tracking-widest hover:border-emerald-500/40 hover:text-emerald-500 transition-all flex items-center justify-center gap-2">
             <Plus size={14} /> Añadir bloque
           </button>
 
           <div className="flex gap-3 pt-2">
             <button onClick={() => { showToast('success', `Plan de "${session.title}" guardado localmente`); onClose(); }}
-              className="flex-1 bg-orange-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
+              className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
               <Save size={14} /> Guardar Plan
             </button>
             <button onClick={onClose} className="flex-1 bg-slate-800 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-700 hover:bg-slate-700 transition-all">Cerrar</button>
@@ -1243,7 +1243,7 @@ const SessionPlanTool = ({
 const SESSION_TYPE_COLORS = {
   TRAINING: { bg: 'bg-blue-500/15 hover:bg-blue-500/25', text: 'text-blue-400', border: 'border-blue-500/25', dot: 'bg-blue-400', label: 'Entrenamiento' },
   MATCH:    { bg: 'bg-red-500/15 hover:bg-red-500/25',   text: 'text-red-400',   border: 'border-red-500/25',   dot: 'bg-red-400',   label: 'Partido'        },
-  PHYSICAL: { bg: 'bg-orange-500/15 hover:bg-orange-500/25', text: 'text-orange-400', border: 'border-orange-500/25', dot: 'bg-orange-400', label: 'Físico' },
+  PHYSICAL: { bg: 'bg-emerald-500/15 hover:bg-emerald-500/25', text: 'text-emerald-400', border: 'border-emerald-500/25', dot: 'bg-emerald-400', label: 'Físico' },
   OTHER:    { bg: 'bg-slate-500/15 hover:bg-slate-500/25', text: 'text-slate-400', border: 'border-slate-500/25', dot: 'bg-slate-500', label: 'Otro' },
 };
 const stc = (type: string) => SESSION_TYPE_COLORS[type as keyof typeof SESSION_TYPE_COLORS] || SESSION_TYPE_COLORS.OTHER;
@@ -1284,7 +1284,7 @@ const METABOLIC_ZONES = [
     workRest: '1:6 a 1:10',
   },
   { id: 'lactico', label: 'Anaeróbico Láctico', short: 'Glucolítico',
-    color: { bg: 'bg-orange-500/10', border: 'border-orange-500/25', text: 'text-orange-400', badge: 'bg-orange-500/20 text-orange-300' },
+    color: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', text: 'text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300' },
     duration: '30 s – 2 min', rest: '1 – 4 min', hr: '170 – 185 ppm', intensity: '80 – 95%',
     description: 'Contraataques sostenidos, presses altas. Ácido láctico como subproducto. Semivida del lactato: 15-20 min.',
     examples: ['Series de contraataque', 'Press defensivo 45s', 'Circuitos 1 min', 'Juego reducido intenso'],
@@ -1318,7 +1318,7 @@ const PERIODIZATION_PHASES = [
     description: 'Condición general, base aeróbica, fuerza-resistencia. Pre-temporada inicial.' },
   { id: 'dirigido', label: 'Dirigido', color: 'text-blue-300', bgColor: 'bg-blue-500/15 border-blue-500/25',
     description: 'Fuerza máxima concentrada (5-6 sem). Hipertrofia → F.Máxima → Potencia.' },
-  { id: 'especifico', label: 'Específico', color: 'text-orange-300', bgColor: 'bg-orange-500/15 border-orange-500/25',
+  { id: 'especifico', label: 'Específico', color: 'text-emerald-300', bgColor: 'bg-emerald-500/15 border-emerald-500/25',
     description: 'Transferencia al juego. Velocidad, pliometría, método complejo. Pretemporada.' },
   { id: 'competitivo', label: 'Competitivo', color: 'text-emerald-300', bgColor: 'bg-emerald-500/15 border-emerald-500/25',
     description: 'Mantenimiento. 1-2 sesiones/sem de fuerza. Prioridad táctica y descanso.' },
@@ -1334,7 +1334,7 @@ const FORCE_CYCLES = [
   { id: 'fmaxima', label: 'Fuerza Máxima', phase: 'Dirigido', phaseColor: 'text-blue-300',
     series: '3 – 6', reps: '1 – 6', percent1RM: '83 – 100%', rest: '3 – 5 min', weeks: '3 – 5 sem', freq: '3 – 4×/sem',
     objective: 'Factores nerviosos. Máxima velocidad de ejecución. Reduce déficit de fuerza.' },
-  { id: 'potencia', label: 'F.Velocidad / Potencia', phase: 'Específico', phaseColor: 'text-orange-300',
+  { id: 'potencia', label: 'F.Velocidad / Potencia', phase: 'Específico', phaseColor: 'text-emerald-300',
     series: '3 – 4', reps: '6 – 10', percent1RM: '78 – 88%', rest: '3 – 5 min', weeks: '3 – 5 sem', freq: '2 – 3×/sem',
     objective: 'Transferir F.Máxima → F.Explosiva. Alta velocidad ejecución + pliometría.' },
   { id: 'mantenimiento', label: 'Mantenimiento', phase: 'Competitivo', phaseColor: 'text-emerald-300',
@@ -1549,7 +1549,7 @@ const TRAINING_GOALS = [
     id: 'resistencia_sprint', emoji: '🔄', title: 'Aguantar más sprints',
     subtitle: 'Sin bajada de rendimiento en el 4º cuarto · Presión alta sostenida',
     description: 'El equipo que mantiene la intensidad en los últimos minutos gana los partidos igualados. Esto se entrena: la capacidad de repetir sprints a alta intensidad con recuperaciones parciales es una cualidad entrenable.',
-    color: { bg: 'bg-orange-500/10', border: 'border-orange-500/25', text: 'text-orange-400', badge: 'bg-orange-500/20' },
+    color: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', text: 'text-emerald-400', badge: 'bg-emerald-500/20' },
     zone: 'lactico', zoneName: 'Anaeróbico Láctico + Aeróbico',
     keyTests: ['Test Mouche (28m × 12min)', 'TIVRE (Test Intermitente)', 'Course Navette (Léger)'],
     prescription: {
@@ -1705,7 +1705,7 @@ const PLAYER_CATEGORIES = [
   },
   {
     id: 'cadete', label: 'Cadete', ages: '14 – 15 años', icon: '🌳',
-    color: { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/25' },
+    color: { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/25' },
     priority: 'Inicio de trabajo de fuerza real + todas las capacidades',
     summary: 'El punto de inflexión. Con 14-15 años ya se puede entrenar prácticamente todo con las cargas adecuadas. Este es el momento de construir la base física que sostendrá el rendimiento los próximos años. Los chicos ya pueden trabajar la resistencia lática. Empieza el trabajo de fuerza con barra si el desarrollo físico lo permite.',
     canTrain: [
@@ -1862,7 +1862,7 @@ const INJURY_PREVENTION = [
     area: 'Rodilla (LCA + Rotuliano)',
     icon: '🦵',
     risk: 'Alto',
-    riskColor: 'text-orange-400',
+    riskColor: 'text-emerald-400',
     prevalence: '15-20% de las lesiones. El LCA es la lesión más temida por su impacto en la carrera.',
     mechanism: 'Valgo dinámico de rodilla (rodilla hacia dentro) en aterrizajes y cambios de dirección. Mayor riesgo en chicas jóvenes.',
     methods: [
@@ -1981,7 +1981,7 @@ const TrainingScheduleManager = ({
 
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-black text-white flex items-center gap-2">
-            <Calendar size={18} className="text-orange-500" /> Horarios de Entrenamiento
+            <Calendar size={18} className="text-emerald-500" /> Horarios de Entrenamiento
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={20} /></button>
         </div>
@@ -1995,8 +1995,8 @@ const TrainingScheduleManager = ({
           ) : schedules.filter(s => s.active).sort((a, b) => a.dayOfWeek - b.dayOfWeek).map(s => (
             <div key={s.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-orange-500/10 border border-orange-500/20 rounded-lg flex items-center justify-center shrink-0">
-                  <Timer size={13} className="text-orange-400" />
+                <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center shrink-0">
+                  <Timer size={13} className="text-emerald-400" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{DAY_NAMES[s.dayOfWeek]} · {s.startTime}–{s.endTime}</p>
@@ -2015,14 +2015,14 @@ const TrainingScheduleManager = ({
             <div className="space-y-1">
               <label className="text-[9px] text-slate-500 uppercase tracking-widest">Día</label>
               <select value={form.dayOfWeek} onChange={e => setForm({ ...form, dayOfWeek: parseInt(e.target.value) })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500/50">
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50">
                 {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] text-slate-500 uppercase tracking-widest">Tipo</label>
               <select value={form.sessionType} onChange={e => setForm({ ...form, sessionType: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500/50">
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50">
                 <option value="TRAINING">Entrenamiento</option>
                 <option value="PHYSICAL">Físico</option>
                 <option value="OTHER">Otro</option>
@@ -2031,19 +2031,19 @@ const TrainingScheduleManager = ({
             <div className="space-y-1">
               <label className="text-[9px] text-slate-500 uppercase tracking-widest">Hora inicio</label>
               <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500/50" />
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50" />
             </div>
             <div className="space-y-1">
               <label className="text-[9px] text-slate-500 uppercase tracking-widest">Hora fin</label>
               <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500/50" />
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50" />
             </div>
           </div>
           <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
             placeholder="Título opcional (ej: Táctica ofensiva)"
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500/50 placeholder:text-slate-600" />
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50 placeholder:text-slate-600" />
           <button onClick={handleAdd} disabled={saving}
-            className="w-full bg-orange-500/10 border border-orange-500/30 text-orange-400 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-orange-500/20 transition-all disabled:opacity-50">
+            className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-500/20 transition-all disabled:opacity-50">
             {saving ? 'Guardando...' : '+ Añadir Franja'}
           </button>
         </div>
@@ -2233,16 +2233,16 @@ const SessionsView = ({
           return (
             <div key={i}
               className={cn('min-h-[180px] rounded-2xl border p-2 flex flex-col cursor-pointer transition-all group',
-                isToday ? 'bg-orange-500/5 border-orange-500/40 shadow-[0_0_20px_rgba(249,115,22,0.08)]'
+                isToday ? 'bg-emerald-500/5 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.08)]'
                   : isPast ? 'bg-slate-900/40 border-slate-800/50 opacity-70'
                   : 'bg-slate-900 border-slate-800 hover:border-slate-600'
               )}
               onClick={() => { setCurrentDate(day); setViewMode('day'); }}>
               {/* Day header */}
               <div className="flex flex-col items-center pb-2 mb-2 border-b border-slate-800">
-                <span className={cn('text-[9px] font-bold uppercase tracking-widest', isToday ? 'text-orange-400' : 'text-slate-600')}>{DAY_SHORT[i]}</span>
-                <span className={cn('text-base font-black', isToday ? 'text-orange-400' : isPast ? 'text-slate-600' : 'text-white')}>{day.getDate()}</span>
-                {isToday && <div className="w-1 h-1 bg-orange-500 rounded-full mt-0.5" />}
+                <span className={cn('text-[9px] font-bold uppercase tracking-widest', isToday ? 'text-emerald-400' : 'text-slate-600')}>{DAY_SHORT[i]}</span>
+                <span className={cn('text-base font-black', isToday ? 'text-emerald-400' : isPast ? 'text-slate-600' : 'text-white')}>{day.getDate()}</span>
+                {isToday && <div className="w-1 h-1 bg-emerald-500 rounded-full mt-0.5" />}
               </div>
               {/* Sessions */}
               <div className="space-y-1 flex-1">
@@ -2254,7 +2254,7 @@ const SessionsView = ({
                     {/* Mini actions on hover */}
                     <div className="flex gap-1 mt-1 opacity-0 group-hover/chip:opacity-100 transition-all">
                       <button onClick={e => { e.stopPropagation(); setPlanningSession(s); }}
-                        className="flex-1 bg-slate-900/60 rounded px-1 py-0.5 text-[7px] font-black uppercase hover:text-orange-400 transition-colors">
+                        className="flex-1 bg-slate-900/60 rounded px-1 py-0.5 text-[7px] font-black uppercase hover:text-emerald-400 transition-colors">
                         Plan
                       </button>
                       <button onClick={e => { e.stopPropagation(); setSelectedSessionTab('lista'); setSelectedSession(s); }}
@@ -2268,7 +2268,7 @@ const SessionsView = ({
               {/* Add hint */}
               {!isPast && daySessions.length === 0 && (
                 <button onClick={e => { e.stopPropagation(); setForm({ ...form, date: key }); setIsAdding(true); }}
-                  className="mt-auto pt-1 text-[9px] text-slate-700 hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-all text-center uppercase tracking-widest">
+                  className="mt-auto pt-1 text-[9px] text-slate-700 hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-all text-center uppercase tracking-widest">
                   + Añadir
                 </button>
               )}
@@ -2316,11 +2316,11 @@ const SessionsView = ({
                   <div key={di}
                     onClick={() => { setCurrentDate(day); setViewMode('day'); }}
                     className={cn('min-h-[88px] rounded-xl border p-1.5 cursor-pointer transition-all flex flex-col',
-                      isToday ? 'bg-orange-500/8 border-orange-500/35'
+                      isToday ? 'bg-emerald-500/8 border-emerald-500/35'
                         : inMonth ? 'bg-slate-900 border-slate-800 hover:border-slate-700'
                         : 'bg-slate-950 border-slate-900 opacity-40'
                     )}>
-                    <span className={cn('text-[10px] font-bold block mb-1', isToday ? 'text-orange-400' : inMonth ? 'text-white' : 'text-slate-600')}>{day.getDate()}</span>
+                    <span className={cn('text-[10px] font-bold block mb-1', isToday ? 'text-emerald-400' : inMonth ? 'text-white' : 'text-slate-600')}>{day.getDate()}</span>
                     <div className="flex flex-col gap-0.5 flex-1">
                       {daySessions.slice(0, 3).map(s => (
                         <div key={s.id}
@@ -2355,7 +2355,7 @@ const SessionsView = ({
             <Timer className="mx-auto text-slate-700 mb-3" size={32} />
             <p className="text-slate-600 text-sm mb-3">{isToday ? 'No hay sesiones hoy' : 'Sin sesiones este día'}</p>
             <button onClick={() => { setForm({ ...form, date: key }); setIsAdding(true); }}
-              className="text-xs text-orange-500 font-bold hover:underline uppercase tracking-widest">
+              className="text-xs text-emerald-500 font-bold hover:underline uppercase tracking-widest">
               + Crear sesión →
             </button>
           </div>
@@ -2375,9 +2375,9 @@ const SessionsView = ({
                 </div>
                 <div className="flex items-center gap-1.5">
                   {present > 0 && <span className="text-[9px] text-emerald-400 font-bold mr-2">{present} presentes</span>}
-                  {avgLoad !== null && <span className="text-[9px] text-orange-400 font-bold mr-2">{avgLoad} AU</span>}
+                  {avgLoad !== null && <span className="text-[9px] text-emerald-400 font-bold mr-2">{avgLoad} AU</span>}
                   <button onClick={() => openEdit(session)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all" title="Editar sesión">
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all" title="Editar sesión">
                     <Edit2 size={13} />
                   </button>
                   <button onClick={() => handleDelete(session.id)} disabled={deletingId === session.id}
@@ -2389,11 +2389,11 @@ const SessionsView = ({
               {session.notes && <p className="text-xs text-slate-500 mb-4 leading-relaxed border-t border-slate-800 pt-3">{session.notes}</p>}
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => { setSelectedSessionTab('plan'); setSelectedSession(session); }}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[9px] font-bold text-slate-400 hover:text-orange-400 hover:border-orange-500/30 transition-all uppercase">
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[9px] font-bold text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-all uppercase">
                   <BookOpen size={11} /> Plan
                 </button>
                 <button onClick={() => setSelectedSession(session)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl text-[9px] font-bold text-orange-400 hover:bg-orange-500/20 transition-all uppercase">
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[9px] font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all uppercase">
                   <Check size={11} /> Lista / RPE
                 </button>
               </div>
@@ -2402,7 +2402,7 @@ const SessionsView = ({
         })}
         {daySessions.length > 0 && (
           <button onClick={() => { setForm({ ...form, date: key }); setIsAdding(true); }}
-            className="w-full py-3 border-2 border-dashed border-slate-800 rounded-[20px] text-slate-600 hover:text-orange-400 hover:border-orange-500/30 text-xs font-bold uppercase tracking-widest transition-all">
+            className="w-full py-3 border-2 border-dashed border-slate-800 rounded-[20px] text-slate-600 hover:text-emerald-400 hover:border-emerald-500/30 text-xs font-bold uppercase tracking-widest transition-all">
             + Nueva sesión este día
           </button>
         )}
@@ -2444,7 +2444,7 @@ const SessionsView = ({
           {(['week', 'month', 'day'] as ViewMode[]).map(m => (
             <button key={m} onClick={() => setViewMode(m)}
               className={cn('px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all',
-                viewMode === m ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-500 hover:text-white'
+                viewMode === m ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-white'
               )}>
               {m === 'week' ? 'Semana' : m === 'month' ? 'Mes' : 'Día'}
             </button>
@@ -2461,7 +2461,7 @@ const SessionsView = ({
             <Settings size={12} /> Horarios
           </button>
           <button onClick={() => { setForm({ ...form, date: currentDate.toISOString().split('T')[0] }); setIsAdding(true); }}
-            className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-orange-500/20 transition-all">
+            className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-emerald-500/20 transition-all">
             <Plus size={12} /> Nueva
           </button>
         </div>
@@ -2480,7 +2480,7 @@ const SessionsView = ({
             {!isCurrentPeriod && (
               <motion.button initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
                 onClick={goToday}
-                className="px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl text-[10px] text-orange-400 font-bold uppercase hover:bg-orange-500/20 transition-all">
+                className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] text-emerald-400 font-bold uppercase hover:bg-emerald-500/20 transition-all">
                 Hoy
               </motion.button>
             )}
@@ -2576,7 +2576,7 @@ const SessionsView = ({
       <AnimatePresence>
         {isAdding && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="bg-slate-900 border border-orange-500/25 rounded-[24px] p-6 shadow-lg">
+            className="bg-slate-900 border border-emerald-500/25 rounded-[24px] p-6 shadow-lg">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-black text-white">Nueva Sesión</h3>
               <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={18} /></button>
@@ -2590,18 +2590,18 @@ const SessionsView = ({
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{label}</label>
                   <input type={type} value={(form as any)[field]} placeholder={placeholder}
                     onChange={e => setForm({ ...form, [field]: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
                 </div>
               ))}
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Hora de inicio</label>
                 <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tipo</label>
                 <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
                   <option value="TRAINING">Entrenamiento</option>
                   <option value="MATCH">Partido</option>
                   <option value="PHYSICAL">Físico</option>
@@ -2611,12 +2611,12 @@ const SessionsView = ({
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Duración (min)</label>
                 <input type="number" value={form.durationMins} onChange={e => setForm({ ...form, durationMins: parseInt(e.target.value) || 90 })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Zona metabólica</label>
                 <select value={form.zone} onChange={e => setForm({ ...form, zone: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
                   <option value="">Sin especificar</option>
                   {METABOLIC_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
                 </select>
@@ -2624,7 +2624,7 @@ const SessionsView = ({
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Fase temporada</label>
                 <select value={form.phase} onChange={e => setForm({ ...form, phase: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
                   <option value="">Sin especificar</option>
                   {PERIODIZATION_PHASES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
@@ -2634,11 +2634,11 @@ const SessionsView = ({
               <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Notas</label>
               <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2}
                 placeholder="Objetivos, indicaciones..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-orange-500/50" />
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-emerald-500/50" />
             </div>
             <div className="flex gap-3">
               <button onClick={handleAdd} disabled={saving}
-                className="flex-1 bg-orange-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : 'Crear Sesión'}
               </button>
               <button onClick={() => setIsAdding(false)} className="px-8 bg-slate-800 border border-slate-700 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
@@ -2721,7 +2721,7 @@ const SessionWorkspaceView = ({
           <h2 className="text-lg font-black text-white leading-tight">{session.title || 'Sesión sin título'}</h2>
           <p className="text-[10px] text-slate-500 font-mono mt-0.5 capitalize">
             {new Date(session.date as string).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-            {startTime && <span className="text-orange-400 font-bold"> · {startTime}</span>}
+            {startTime && <span className="text-emerald-400 font-bold"> · {startTime}</span>}
             {` · ${session.durationMins} min`}
           </p>
           {(zoneInfo || phaseInfo) && (
@@ -2749,7 +2749,7 @@ const SessionWorkspaceView = ({
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={cn('flex-1 px-3 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap',
-              activeTab === t.id ? 'bg-orange-500 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-slate-800')}>
+              activeTab === t.id ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-slate-800')}>
             {t.label}
           </button>
         ))}
@@ -2763,7 +2763,7 @@ const SessionWorkspaceView = ({
             <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-white flex items-center gap-2">
-                  <FileText size={16} className="text-orange-500" /> Anotaciones del entrenador
+                  <FileText size={16} className="text-emerald-500" /> Anotaciones del entrenador
                 </h3>
                 <span className="text-[9px] text-slate-600 font-mono">{annotations.length} car.</span>
               </div>
@@ -2774,10 +2774,10 @@ const SessionWorkspaceView = ({
                 value={annotations} onChange={e => setAnnotations(e.target.value)}
                 rows={9}
                 placeholder={"Ej: No viene Carlos (lesión). Trabajar defensa de zona 2-3.\nIntroducir bloqueo directo en ataque estático.\nGrupo cansado — reducir intensidad del físico..."}
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-orange-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
               />
               <button onClick={saveContent} disabled={savingNotes}
-                className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20">
+                className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
                 {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar anotaciones</>}
               </button>
             </div>
@@ -2794,14 +2794,14 @@ const SessionWorkspaceView = ({
           {activeTab === 'material' && (
             <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-4">
               <h3 className="font-black text-white flex items-center gap-2">
-                <Dumbbell size={16} className="text-orange-500" /> Material necesario
+                <Dumbbell size={16} className="text-emerald-500" /> Material necesario
               </h3>
               <p className="text-xs text-slate-500">Un ítem por línea. Puedes indicar cantidad, color o referencia.</p>
               <textarea
                 value={material} onChange={e => setMaterial(e.target.value)}
                 rows={8}
                 placeholder={"Ej:\n10 balones de baloncesto\n4 conos (azules)\n2 petos por equipo (rojo y azul)\nPizarra táctica\nCronómetro"}
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-orange-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
               />
               {/* Formatted list preview */}
               {material.trim() && (
@@ -2809,14 +2809,14 @@ const SessionWorkspaceView = ({
                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3">Vista previa — lista de material</p>
                   {material.split('\n').filter(l => l.trim()).map((item, i) => (
                     <div key={i} className="flex items-center gap-3 py-1.5 border-b border-slate-800/40 last:border-0">
-                      <div className="w-6 h-6 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[9px] font-black text-orange-500 shrink-0">{i + 1}</div>
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[9px] font-black text-emerald-500 shrink-0">{i + 1}</div>
                       <span className="text-sm text-white">{item.trim()}</span>
                     </div>
                   ))}
                 </div>
               )}
               <button onClick={saveContent} disabled={savingNotes}
-                className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20">
+                className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
                 {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar material</>}
               </button>
             </div>
@@ -2897,20 +2897,20 @@ const SessionDetailTool = ({
     <div className="bg-slate-900 border border-slate-800 rounded-[28px] overflow-hidden shadow-2xl relative">
       {loading && (
         <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-[28px]">
-          <Loader2 className="text-orange-500 animate-spin" size={32} />
+          <Loader2 className="text-emerald-500 animate-spin" size={32} />
         </div>
       )}
       {/* Header */}
       <div className="p-6 border-b border-slate-800 bg-slate-950/40">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[9px] font-mono text-orange-500 uppercase tracking-widest mb-1">Pasar Lista + RPE</p>
+            <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest mb-1">Pasar Lista + RPE</p>
             <h3 className="text-xl font-black text-white tracking-tight">{session.title}</h3>
             <p className="text-xs text-slate-500 mt-1">{new Date(session.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} • {session.durationMins} min</p>
           </div>
           <div className="flex gap-4 text-center">
             <div><p className="text-[8px] text-slate-600 uppercase mb-1">Presentes</p><p className="text-lg font-black text-white">{presentCount}</p></div>
-            <div><p className="text-[8px] text-slate-600 uppercase mb-1">RPE Medio</p><p className="text-lg font-black text-orange-400">{teamAvgBorg}</p></div>
+            <div><p className="text-[8px] text-slate-600 uppercase mb-1">RPE Medio</p><p className="text-lg font-black text-emerald-400">{teamAvgBorg}</p></div>
           </div>
         </div>
       </div>
@@ -2950,9 +2950,9 @@ const SessionDetailTool = ({
                 <span className="text-[9px] text-slate-600 uppercase font-bold whitespace-nowrap">RPE Borg</span>
                 <input type="range" min={0} max={10} step={1} value={borgScale[player.id] || 0}
                   onChange={e => setBorgScale(prev => ({ ...prev, [player.id]: parseInt(e.target.value) }))}
-                  className="flex-1 accent-orange-500" />
+                  className="flex-1 accent-emerald-500" />
                 <div className="flex flex-col items-center w-14">
-                  <span className="text-base font-black text-orange-500 leading-none">{borgScale[player.id] || 0}</span>
+                  <span className="text-base font-black text-emerald-500 leading-none">{borgScale[player.id] || 0}</span>
                   <span className="text-[8px] text-slate-600 mt-0.5">{getBorgLabel(borgScale[player.id] || 0)}</span>
                 </div>
               </div>
@@ -2963,7 +2963,7 @@ const SessionDetailTool = ({
 
       <div className="p-6 border-t border-slate-800 flex gap-3">
         <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-orange-500 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-orange-500/20">
+          className="flex-1 bg-emerald-500 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-emerald-500/20">
           {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : hasExisting ? <><Save size={14} /> Actualizar Sesión</> : <><Check size={14} /> Finalizar Sesión</>}
         </button>
         <button onClick={onBack} className="px-8 bg-slate-800 text-white py-4 rounded-xl text-[10px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
@@ -3011,7 +3011,7 @@ const AttendanceTool = ({
     <div className="bg-slate-900 border border-slate-800 rounded-[28px] overflow-hidden shadow-2xl">
       <div className="p-6 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between">
         <div>
-          <p className="text-[9px] font-mono text-orange-500 uppercase tracking-widest mb-1">Asistencia Rápida</p>
+          <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest mb-1">Asistencia Rápida</p>
           <h3 className="text-xl font-black text-white tracking-tight">Pasar Lista</h3>
           <p className="text-xs text-slate-500 mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} • {presentCount} presentes</p>
         </div>
@@ -3044,7 +3044,7 @@ const AttendanceTool = ({
 
       <div className="p-6 border-t border-slate-800 flex gap-3">
         <button onClick={handleSave} disabled={saving || Object.keys(attendance).length === 0}
-          className="flex-1 bg-orange-500 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-orange-500/20">
+          className="flex-1 bg-emerald-500 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-emerald-500/20">
           {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : <><Check size={14} /> Guardar Asistencia</>}
         </button>
         <button onClick={onCancel} className="px-8 bg-slate-800 text-white py-4 rounded-xl text-[10px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
@@ -3176,9 +3176,9 @@ const DashboardView = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Jugadores', value: players.length, sub: `${subjects.filter(s => s.role === Role.STAFF).length} staff`, icon: Users, color: 'text-blue-400', action: 'roster' },
-          { label: 'Wellness hoy', value: `${wellnessFilled}/${players.length}`, sub: `${players.length - wellnessFilled} pendientes`, icon: Activity, color: wellnessFilled < players.length ? 'text-orange-400' : 'text-emerald-400', action: 'wellness' },
+          { label: 'Wellness hoy', value: `${wellnessFilled}/${players.length}`, sub: `${players.length - wellnessFilled} pendientes`, icon: Activity, color: wellnessFilled < players.length ? 'text-emerald-400' : 'text-emerald-400', action: 'wellness' },
           { label: 'Lesiones activas', value: activeIncidents.length, sub: `${activeIncidents.filter(i => i.severity === 'high').length} críticas`, icon: HeartPulse, color: activeIncidents.length > 0 ? 'text-red-400' : 'text-emerald-400', action: 'health' },
-          { label: 'En riesgo hoy', value: atRiskCount, sub: 'jugadores ≥ 55% riesgo', icon: AlertTriangle, color: atRiskCount > 0 ? 'text-orange-400' : 'text-emerald-400', action: 'health' },
+          { label: 'En riesgo hoy', value: atRiskCount, sub: 'jugadores ≥ 55% riesgo', icon: AlertTriangle, color: atRiskCount > 0 ? 'text-emerald-400' : 'text-emerald-400', action: 'health' },
         ].map(kpi => (
           <button key={kpi.label} onClick={() => onNavigate(kpi.action)}
             className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left group hover:border-slate-700 transition-all hover:bg-slate-900/80">
@@ -3202,7 +3202,7 @@ const DashboardView = ({
               <p className="text-[9px] text-slate-500 font-mono mt-0.5">Carga media por jugador (AU) y score wellness</p>
             </div>
             <div className="flex gap-3 text-[9px]">
-              <span className="flex items-center gap-1.5 text-slate-500"><span className="w-3 h-3 rounded bg-orange-500/60"></span>Carga</span>
+              <span className="flex items-center gap-1.5 text-slate-500"><span className="w-3 h-3 rounded bg-emerald-500/60"></span>Carga</span>
               <span className="flex items-center gap-1.5 text-slate-500"><span className="w-3 h-1.5 rounded bg-blue-500"></span>Wellness</span>
             </div>
           </div>
@@ -3225,7 +3225,7 @@ const DashboardView = ({
         <div className="space-y-4">
           {nextMatch && (
             <div className="bg-slate-900 border border-slate-800 rounded-[20px] p-5 cursor-pointer hover:border-slate-700 transition-all" onClick={() => onNavigate('matches')}>
-              <p className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-2">Próximo Partido</p>
+              <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mb-2">Próximo Partido</p>
               <h4 className="font-black text-white text-base leading-tight mb-1">{nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponent}</h4>
               <p className="text-xs text-slate-500">{new Date(nextMatch.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
               {nextMatch.location && <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-1"><MapPin size={10} />{nextMatch.location}</p>}
@@ -3259,7 +3259,7 @@ const DashboardView = ({
             <h3 className="font-black text-white text-sm">Disponibilidad del Equipo</h3>
             <p className="text-[9px] text-slate-500 font-mono mt-0.5">Wellness hoy + carga de ayer → riesgo estimado</p>
           </div>
-          <button onClick={() => onNavigate('wellness')} className="text-[9px] font-bold text-orange-500 hover:underline uppercase tracking-wider">Registrar Wellness →</button>
+          <button onClick={() => onNavigate('wellness')} className="text-[9px] font-bold text-emerald-500 hover:underline uppercase tracking-wider">Registrar Wellness →</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -3287,7 +3287,7 @@ const DashboardView = ({
                     </td>
                     <td className="px-6 py-3 text-center">
                       {wellness !== null ? (
-                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", wellness <= 2 ? 'bg-emerald-500/15 text-emerald-400' : wellness <= 3.5 ? 'bg-orange-500/15 text-orange-400' : 'bg-red-500/15 text-red-400')}>
+                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", wellness <= 2 ? 'bg-emerald-500/15 text-emerald-400' : wellness <= 3.5 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400')}>
                           {wellness.toFixed(1)}/5
                         </span>
                       ) : <span className="text-[10px] text-slate-700">—</span>}
@@ -3323,7 +3323,7 @@ const DashboardView = ({
         <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
             <h3 className="font-black text-white text-sm">Últimas Sesiones</h3>
-            <button onClick={() => onNavigate('sessions')} className="text-[9px] font-bold text-orange-500 hover:underline uppercase tracking-wider">Ver todas →</button>
+            <button onClick={() => onNavigate('sessions')} className="text-[9px] font-bold text-emerald-500 hover:underline uppercase tracking-wider">Ver todas →</button>
           </div>
           <div className="divide-y divide-slate-800/50">
             {recentSessions.map(s => (
@@ -3428,7 +3428,7 @@ const HealthView = ({
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
             className={cn("px-5 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide",
-              activeTab === tab.id ? "bg-orange-500 text-slate-950 shadow-md" : "text-slate-500 hover:text-white")}>
+              activeTab === tab.id ? "bg-emerald-500 text-slate-950 shadow-md" : "text-slate-500 hover:text-white")}>
             {tab.label}
           </button>
         ))}
@@ -3528,7 +3528,7 @@ const HealthView = ({
           )}
           <div className="mt-4 flex gap-4 text-[9px] font-bold text-slate-500 flex-wrap">
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Bajo riesgo (&lt;55%)</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>Alerta (55–74%)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Alerta (55–74%)</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>Crítico (≥75%)</span>
           </div>
         </div>
@@ -3579,22 +3579,22 @@ const HealthView = ({
             <div className="py-20 text-center border-2 border-dashed border-slate-900 rounded-[28px]">
               <HeartPulse className="mx-auto text-slate-800 mb-4" size={36} />
               <p className="text-slate-600 font-mono text-sm">No hay incidencias registradas</p>
-              <button onClick={() => setIsAddingIncident(true)} className="mt-3 text-xs text-orange-500 font-bold hover:underline uppercase">Registrar primera incidencia →</button>
+              <button onClick={() => setIsAddingIncident(true)} className="mt-3 text-xs text-emerald-500 font-bold hover:underline uppercase">Registrar primera incidencia →</button>
             </div>
           ) : (
             incidents.sort((a, b) => (a.status === 'active' ? -1 : 1)).map(incident => {
               const player = subjects.find(s => s.id === incident.subjectId);
-              const severityStyle = incident.severity === 'high' ? 'border-red-500/30 bg-red-500/5' : incident.severity === 'medium' ? 'border-orange-500/20 bg-orange-500/5' : 'border-slate-700 bg-slate-950';
+              const severityStyle = incident.severity === 'high' ? 'border-red-500/30 bg-red-500/5' : incident.severity === 'medium' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-700 bg-slate-950';
               return (
                 <div key={incident.id} className={cn("border rounded-2xl p-5 flex items-start justify-between gap-4", severityStyle)}>
                   <div className="flex items-start gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", incident.severity === 'high' ? 'bg-red-500/20' : incident.severity === 'medium' ? 'bg-orange-500/20' : 'bg-slate-800')}>
-                      <HeartPulse size={18} className={incident.severity === 'high' ? 'text-red-400' : incident.severity === 'medium' ? 'text-orange-400' : 'text-slate-500'} />
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", incident.severity === 'high' ? 'bg-red-500/20' : incident.severity === 'medium' ? 'bg-emerald-500/20' : 'bg-slate-800')}>
+                      <HeartPulse size={18} className={incident.severity === 'high' ? 'text-red-400' : incident.severity === 'medium' ? 'text-emerald-400' : 'text-slate-500'} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-bold text-white">{player?.name || 'Jugador'}</span>
-                        <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-md uppercase", incident.severity === 'high' ? 'bg-red-500/20 text-red-400' : incident.severity === 'medium' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-800 text-slate-500')}>{incident.severity}</span>
+                        <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-md uppercase", incident.severity === 'high' ? 'bg-red-500/20 text-red-400' : incident.severity === 'medium' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500')}>{incident.severity}</span>
                       </div>
                       <p className="text-sm text-slate-300 font-medium">{incident.type}</p>
                       <p className="text-[10px] text-slate-500 font-mono mt-1">{incident.date} {incident.notes && `• ${incident.notes}`}</p>
@@ -3667,13 +3667,13 @@ const PlayerRegistrationForm = ({
           <div key={f.key} className="space-y-1.5">
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{f.label}</label>
             <input type={f.type || 'text'} value={(form as any)[f.key]} onChange={e => setForm({...form, [f.key]: e.target.value})} placeholder={f.placeholder}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
           </div>
         ))}
         <div className="space-y-1.5">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Posición</label>
           <select value={form.position} onChange={e => setForm({...form, position: e.target.value})}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
             <option value="">Seleccionar...</option>
             {positions.map(p => <option key={p}>{p}</option>)}
           </select>
@@ -3681,7 +3681,7 @@ const PlayerRegistrationForm = ({
         <div className="space-y-1.5">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Rol</label>
           <select value={form.role} onChange={e => setForm({...form, role: e.target.value as Role})}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
             <option value={Role.PLAYER}>Jugador</option>
             <option value={Role.STAFF}>Staff</option>
           </select>
@@ -3689,7 +3689,7 @@ const PlayerRegistrationForm = ({
       </div>
       <div className="flex gap-3">
         <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-orange-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-orange-500/20">
+          className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-emerald-500/20">
           {saving ? <><Loader2 size={14} className="animate-spin" />Guardando...</> : <><Check size={14} />{editingPlayer ? 'Actualizar' : 'Registrar'}</>}
         </button>
         <button onClick={onCancel} className="px-8 bg-slate-800 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
@@ -3752,14 +3752,14 @@ const RosterView = ({
           {(['ALL', 'PLAYER', 'STAFF'] as const).map(r => (
             <button key={r} onClick={() => setFilterRole(r)}
               className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border",
-                filterRole === r ? "bg-orange-500 text-slate-950 border-orange-500" : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700")}>
+                filterRole === r ? "bg-emerald-500 text-slate-950 border-emerald-500" : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700")}>
               {r === 'ALL' ? 'Todos' : r === 'PLAYER' ? 'Jugadores' : 'Staff'}
             </button>
           ))}
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..."
-            className="flex-1 md:w-48 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-orange-500/50 placeholder:text-slate-600" />
+            className="flex-1 md:w-48 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-emerald-500/50 placeholder:text-slate-600" />
           <button onClick={onPassAttendance}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold uppercase hover:bg-emerald-500/20 transition-all whitespace-nowrap">
             <Check size={14} /> Pasar Lista
@@ -3789,11 +3789,11 @@ const RosterView = ({
                     <td className="px-5 py-3.5 text-[10px] font-mono text-slate-600">#{player.number || '—'}</td>
                     <td className="px-5 py-3.5">
                       <button onClick={() => onPlayerClick(player)} className="flex items-center gap-3 text-left group/name">
-                        <div className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-xs font-black text-white group-hover/name:bg-orange-500 group-hover/name:text-slate-950 transition-all">
+                        <div className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-xs font-black text-white group-hover/name:bg-emerald-500 group-hover/name:text-slate-950 transition-all">
                           {player.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-white group-hover/name:text-orange-400 transition-colors">{player.name} {player.lastName || ''}</p>
+                          <p className="text-sm font-bold text-white group-hover/name:text-emerald-400 transition-colors">{player.name} {player.lastName || ''}</p>
                           <p className="text-[9px] text-slate-600 font-mono uppercase">{player.role}</p>
                         </div>
                       </button>
@@ -3804,7 +3804,7 @@ const RosterView = ({
                       {attRate !== null ? (
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-14 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div className={cn("h-full rounded-full", attRate >= 80 ? 'bg-emerald-500' : attRate >= 60 ? 'bg-orange-500' : 'bg-red-500')} style={{ width: `${attRate}%` }} />
+                            <div className={cn("h-full rounded-full", attRate >= 80 ? 'bg-emerald-500' : attRate >= 60 ? 'bg-emerald-500' : 'bg-red-500')} style={{ width: `${attRate}%` }} />
                           </div>
                           <span className="text-[9px] text-slate-500 font-mono">{attRate}%</span>
                         </div>
@@ -3813,7 +3813,7 @@ const RosterView = ({
                     <td className="px-5 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={() => setEditingSubject(player)} title="Editar"
-                          className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-orange-400 hover:border-orange-500/30 transition-all">
+                          className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-all">
                           <Edit2 size={13} />
                         </button>
                         <button onClick={() => onPlayerClick(player)} title="Ver perfil"
@@ -4002,7 +4002,7 @@ const MatchesView = ({
       <AnimatePresence>
         {isAdding && (
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
-            className="bg-slate-900 border border-orange-500/30 rounded-[24px] p-6">
+            className="bg-slate-900 border border-emerald-500/30 rounded-[24px] p-6">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-black text-white">Nuevo Partido</h3>
               <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={18} /></button>
@@ -4011,22 +4011,22 @@ const MatchesView = ({
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Rival</label>
                 <input value={form.opponent} onChange={e => setForm({...form, opponent: e.target.value})} placeholder="Nombre del equipo rival"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Fecha</label>
                 <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Pabellón / Lugar</label>
                 <input value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Pabellón Municipal..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Condición</label>
                 <select value={form.isHome ? 'home' : 'away'} onChange={e => setForm({...form, isHome: e.target.value === 'home'})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
                   <option value="home">Local</option>
                   <option value="away">Visitante</option>
                 </select>
@@ -4034,7 +4034,7 @@ const MatchesView = ({
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Estado</label>
                 <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
                   <option value="SCHEDULED">Programado</option>
                   <option value="FINISHED">Finalizado</option>
                 </select>
@@ -4043,15 +4043,15 @@ const MatchesView = ({
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Resultado (Nuestro - Rival)</label>
                   <div className="flex gap-2 items-center">
-                    <input type="number" value={form.resultUs} onChange={e => setForm({...form, resultUs: e.target.value})} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50 text-center" />
+                    <input type="number" value={form.resultUs} onChange={e => setForm({...form, resultUs: e.target.value})} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50 text-center" />
                     <span className="text-slate-600 font-black">—</span>
-                    <input type="number" value={form.resultThem} onChange={e => setForm({...form, resultThem: e.target.value})} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50 text-center" />
+                    <input type="number" value={form.resultThem} onChange={e => setForm({...form, resultThem: e.target.value})} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50 text-center" />
                   </div>
                 </div>
               )}
             </div>
             <div className="flex gap-3">
-              <button onClick={handleAdd} disabled={saving} className="flex-1 bg-orange-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+              <button onClick={handleAdd} disabled={saving} className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
                 {saving ? <><Loader2 size={14} className="animate-spin" />Guardando...</> : 'Guardar Partido'}
               </button>
               <button onClick={() => setIsAdding(false)} className="px-8 bg-slate-800 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
@@ -4159,7 +4159,7 @@ const ReportsView = ({
     : '—';
 
   const kpis = [
-    { label: 'RPE Medio Equipo', value: avgBorg, sub: 'Escala Borg 0–10', icon: Zap, color: 'text-orange-400' },
+    { label: 'RPE Medio Equipo', value: avgBorg, sub: 'Escala Borg 0–10', icon: Zap, color: 'text-emerald-400' },
     { label: 'Wellness Medio', value: avgWellness !== '—' ? `${avgWellness}/5` : '—', sub: 'Índice Hooper', icon: Activity, color: 'text-blue-400' },
     { label: 'Lesiones activas', value: activeIncidents.toString(), sub: 'jugadores afectados', icon: HeartPulse, color: activeIncidents > 0 ? 'text-red-400' : 'text-emerald-400' },
     { label: 'Score Eval. Medio', value: evalAvg !== '—' ? `${evalAvg}/5` : '—', sub: 'Evaluaciones técnicas', icon: Star, color: 'text-yellow-400' },
@@ -4233,7 +4233,7 @@ Lesiones activas: ${playerIncidents.map(i => i.type).join(', ') || 'Ninguna'}
       {/* AI Report Generator */}
       <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6">
         <div className="flex items-center gap-3 mb-4">
-          <BrainCircuit size={20} className="text-orange-500" />
+          <BrainCircuit size={20} className="text-emerald-500" />
           <div>
             <h3 className="font-black text-white text-sm">Informe Individual con IA</h3>
             <p className="text-[9px] text-slate-500 font-mono mt-0.5">Análisis de rendimiento personalizado generado por Gemini AI</p>
@@ -4241,19 +4241,19 @@ Lesiones activas: ${playerIncidents.map(i => i.type).join(', ') || 'Ninguna'}
         </div>
         <div className="flex gap-3 mb-4">
           <select value={selectedPlayerId} onChange={e => setSelectedPlayerId(e.target.value)}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
             <option value="">Seleccionar jugador...</option>
             {players.map(p => <option key={p.id} value={p.id}>{p.name} {p.lastName}</option>)}
           </select>
           <button onClick={() => handleGenerateReport(selectedPlayerId)} disabled={!!generatingAI || !selectedPlayerId}
-            className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20 whitespace-nowrap">
+            className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20 whitespace-nowrap">
             {generatingAI ? <><Loader2 size={14} className="animate-spin" />Analizando...</> : <><Sparkles size={14} />Generar Informe</>}
           </button>
         </div>
         {aiReport && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-1.5"><Sparkles size={10} /> Informe Generado por Gemini AI</span>
+              <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1.5"><Sparkles size={10} /> Informe Generado por Gemini AI</span>
               <button onClick={() => setAiReport(null)} className="text-slate-600 hover:text-white"><X size={14} /></button>
             </div>
             <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-mono">{aiReport}</p>
@@ -4319,7 +4319,7 @@ const QualitativeReportsView = ({
         <span className="text-xs text-slate-400">{label}</span>
         <div className="flex gap-1">
           {[1,2,3,4,5].map(v => (
-            <div key={v} className={cn("w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black", v === n ? 'bg-orange-500 text-slate-950' : 'bg-slate-800 text-slate-600')}>{v}</div>
+            <div key={v} className={cn("w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black", v === n ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-600')}>{v}</div>
           ))}
         </div>
       </div>
@@ -4331,7 +4331,7 @@ const QualitativeReportsView = ({
       <div className="flex justify-between items-center">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Evaluaciones</h4>
         <button onClick={() => setIsAdding(!isAdding)}
-          className="text-[9px] font-bold text-orange-500 border border-orange-500/20 px-4 py-2 rounded-xl hover:bg-orange-500/10 transition-all flex items-center gap-1.5 uppercase tracking-wide">
+          className="text-[9px] font-bold text-emerald-500 border border-emerald-500/20 px-4 py-2 rounded-xl hover:bg-emerald-500/10 transition-all flex items-center gap-1.5 uppercase tracking-wide">
           <Plus size={12} /> Nueva Evaluación
         </button>
       </div>
@@ -4347,7 +4347,7 @@ const QualitativeReportsView = ({
                     <div className="flex gap-1">
                       {[1,2,3,4,5].map(v => (
                         <button key={v} onClick={() => setForm(prev => ({ ...prev, [f.key]: v }))}
-                          className={cn("flex-1 h-9 rounded-lg text-sm font-black transition-all border", form[f.key] === v ? 'bg-orange-500 border-orange-500 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-600')}>
+                          className={cn("flex-1 h-9 rounded-lg text-sm font-black transition-all border", form[f.key] === v ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-600')}>
                           {v}
                         </button>
                       ))}
@@ -4357,10 +4357,10 @@ const QualitativeReportsView = ({
               </div>
               <textarea value={form.comments} onChange={e => setForm(prev => ({ ...prev, comments: e.target.value }))}
                 placeholder="Comentarios del entrenador..." rows={3}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-orange-500/50" />
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white resize-none outline-none focus:border-emerald-500/50" />
               <div className="flex gap-2">
                 <button onClick={handleSave} disabled={saving}
-                  className="flex-1 bg-orange-500 text-slate-950 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60">
+                  className="flex-1 bg-emerald-500 text-slate-950 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60">
                   {saving ? <><Loader2 size={12} className="animate-spin" />Guardando...</> : 'Finalizar Evaluación'}
                 </button>
                 <button onClick={() => setIsAdding(false)} className="px-5 bg-slate-800 text-white py-3 rounded-xl text-[9px] font-bold uppercase border border-slate-700 hover:bg-slate-700 transition-all">Cancelar</button>
@@ -4382,7 +4382,7 @@ const QualitativeReportsView = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-mono text-slate-600">{report.season} • {report.date}</span>
-                {report.overall && <span className="text-xs font-black text-orange-500">{parseFloat(report.overall).toFixed(1)}/5</span>}
+                {report.overall && <span className="text-xs font-black text-emerald-500">{parseFloat(report.overall).toFixed(1)}/5</span>}
               </div>
               {report.comments && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 italic">"{report.comments}"</p>}
             </div>
@@ -4500,7 +4500,7 @@ const PlayerDetailDashboard = ({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-500 hover:text-white shrink-0"><ChevronLeft size={20} /></button>
-            <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center text-2xl font-black text-slate-950 shrink-0">{player.name.charAt(0)}</div>
+            <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-2xl font-black text-slate-950 shrink-0">{player.name.charAt(0)}</div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h3 className="text-2xl font-black text-white tracking-tight">{player.name} {player.lastName}</h3>
@@ -4514,7 +4514,7 @@ const PlayerDetailDashboard = ({
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => onEditPlayer(player)} className="px-4 py-2 bg-orange-500 text-slate-950 rounded-xl text-[9px] font-black uppercase hover:bg-orange-400 transition-all flex items-center gap-1.5"><Edit2 size={12} /> Editar</button>
+            <button onClick={() => onEditPlayer(player)} className="px-4 py-2 bg-emerald-500 text-slate-950 rounded-xl text-[9px] font-black uppercase hover:bg-emerald-400 transition-all flex items-center gap-1.5"><Edit2 size={12} /> Editar</button>
             <button onClick={handleExportPDF} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[9px] font-bold uppercase text-slate-400 hover:text-white transition-all flex items-center gap-1.5"><Printer size={12} /> PDF</button>
           </div>
         </div>
@@ -4526,7 +4526,7 @@ const PlayerDetailDashboard = ({
           {SUBTABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={cn("px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap",
-                activeTab === tab.id ? "bg-orange-500 text-slate-950 shadow-md" : "text-slate-500 hover:text-white hover:bg-slate-800")}>
+                activeTab === tab.id ? "bg-emerald-500 text-slate-950 shadow-md" : "text-slate-500 hover:text-white hover:bg-slate-800")}>
               {tab.label}
             </button>
           ))}
@@ -4628,7 +4628,7 @@ const PlayerDetailDashboard = ({
               {testDefinitions.map(test => {
                 const latest = testResults.filter(r => r.testId === test.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                 return (
-                  <div key={test.id} className="p-4 bg-slate-950 border border-slate-800 rounded-2xl hover:border-orange-500/20 transition-all">
+                  <div key={test.id} className="p-4 bg-slate-950 border border-slate-800 rounded-2xl hover:border-emerald-500/20 transition-all">
                     <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wider mb-2">{test.name}</p>
                     {latest ? (
                       <><p className="text-2xl font-black text-white">{latest.value}<span className="text-xs text-slate-500 ml-1">{test.unit}</span></p><p className="text-[9px] text-slate-700 font-mono mt-1">Último: {latest.date}</p></>
@@ -4795,7 +4795,7 @@ const PhysicalTestsView = ({
         <button key={v.id} onClick={() => setActiveView(v.id)}
           className={cn('px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all',
             activeView === v.id
-              ? 'bg-orange-500 border-orange-500 text-slate-950'
+              ? 'bg-emerald-500 border-emerald-500 text-slate-950'
               : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300')}>
           {v.label}
         </button>
@@ -4825,7 +4825,7 @@ const PhysicalTestsView = ({
           <div className="space-y-1.5">
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Selecciona el test a comparar</label>
             <select value={compareTestId} onChange={e => setCompareTestId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
               <option value="">Elige un test...</option>
               {testDefinitions.map(t => <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>)}
             </select>
@@ -4861,7 +4861,7 @@ const PhysicalTestsView = ({
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-sm font-black text-orange-400">{last?.value} <span className="text-[9px] text-slate-600 font-normal">{compareTest?.unit}</span></p>
+                        <p className="text-sm font-black text-emerald-400">{last?.value} <span className="text-[9px] text-slate-600 font-normal">{compareTest?.unit}</span></p>
                         <p className="text-[9px] text-slate-600 mt-0.5">{last ? new Date(last.date).toLocaleDateString('es-ES') : '—'}</p>
                       </td>
                       <td className="px-4 py-3.5">
@@ -4927,7 +4927,7 @@ const PhysicalTestsView = ({
             {/* KPI chips */}
             <div className="flex gap-3 flex-wrap">
               {[
-                { label: 'Media', value: avg.toFixed(2), color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
+                { label: 'Media', value: avg.toFixed(2), color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
                 { label: 'Máximo', value: String(max), color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
                 { label: 'Mínimo', value: String(min), color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
               ].map(k => (
@@ -4960,7 +4960,7 @@ const PhysicalTestsView = ({
                       {isBest && <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">⬆ Mejor</span>}
                       {isWorst && <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">⬇ Menor</span>}
                     </div>
-                    <span className={cn('font-black text-sm', isBest ? 'text-emerald-400' : isWorst ? 'text-blue-400' : isAboveAvg ? 'text-orange-400' : 'text-slate-400')}>
+                    <span className={cn('font-black text-sm', isBest ? 'text-emerald-400' : isWorst ? 'text-blue-400' : isAboveAvg ? 'text-emerald-400' : 'text-slate-400')}>
                       {val} <span className="text-[9px] text-slate-600 font-normal">{test.unit}</span>
                     </span>
                   </div>
@@ -4969,7 +4969,7 @@ const PhysicalTestsView = ({
                     <div className="absolute top-0 bottom-0 w-0.5 bg-slate-600 z-10" style={{ left: `${max > 0 ? (avg / max) * 100 : 50}%` }} />
                     <motion.div
                       initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className={cn('h-full rounded-full', isBest ? 'bg-emerald-500' : isAboveAvg ? 'bg-orange-500' : 'bg-blue-500')} />
+                      className={cn('h-full rounded-full', isBest ? 'bg-emerald-500' : isAboveAvg ? 'bg-emerald-500' : 'bg-blue-500')} />
                   </div>
                 </div>
               );
@@ -4977,14 +4977,14 @@ const PhysicalTestsView = ({
             {/* Legend */}
             <div className="flex items-center gap-4 pt-2 text-[8px] text-slate-600">
               <div className="flex items-center gap-1"><div className="w-0.5 h-3 bg-slate-600 rounded" /> Media del equipo</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-2 rounded bg-orange-500" /> Por encima</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-2 rounded bg-emerald-500" /> Por encima</div>
               <div className="flex items-center gap-1"><div className="w-3 h-2 rounded bg-blue-500" /> Por debajo</div>
             </div>
           </div>
 
           {/* Interpretation */}
           <div className="mx-6 mb-6 p-4 bg-slate-950 border border-slate-800 rounded-2xl">
-            <p className="text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
               <BrainCircuit size={11} /> Análisis del entrenador
             </p>
             <p className="text-sm text-slate-300 leading-relaxed">{interpretation}</p>
@@ -5005,16 +5005,16 @@ const PhysicalTestsView = ({
         <div className="flex-1 space-y-1.5">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Test a evaluar</label>
           <select value={selectedTestId} onChange={e => setSelectedTestId(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50">
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50">
             <option value="">Seleccionar test...</option>
             {testDefinitions.map(t => <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>)}
           </select>
         </div>
         <div className="space-y-1.5">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Fecha</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" />
         </div>
-        <button onClick={handleSave} disabled={saving || !selectedTestId} className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20 whitespace-nowrap">
+        <button onClick={handleSave} disabled={saving || !selectedTestId} className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20 whitespace-nowrap">
           {saving ? <><Loader2 size={14} className="animate-spin" />Guardando...</> : <><Save size={14} />Guardar</>}
         </button>
       </div>
@@ -5044,14 +5044,14 @@ const PhysicalTestsView = ({
                     <div className="flex items-center gap-2">
                       <input type="number" step="0.01" placeholder="0.00" disabled={!selectedTestId} value={values[p.id] || ''}
                         onChange={e => setValues(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 disabled:opacity-40" />
+                        className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40 disabled:opacity-40" />
                       {selectedTest && <span className="text-xs text-slate-600">{selectedTest.unit}</span>}
                     </div>
                   </td>
                   <td className="px-5 py-3">
                     <input type="text" placeholder="Ej: Venía de esguince, molestia rodilla..." disabled={!selectedTestId} value={notes[p.id] || ''}
                       onChange={e => setNotes(prev => ({ ...prev, [p.id]: e.target.value }))}
-                      className="w-full min-w-[180px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-orange-500/40 disabled:opacity-40 placeholder:text-slate-700" />
+                      className="w-full min-w-[180px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/40 disabled:opacity-40 placeholder:text-slate-700" />
                   </td>
                 </tr>
               ))}
@@ -5081,7 +5081,7 @@ const ProfileView = ({
     <div className="max-w-2xl space-y-6">
       {/* Profile card */}
       <div className="bg-slate-900 border border-slate-800 rounded-[28px] p-8 flex flex-col md:flex-row items-center gap-6">
-        <div className="w-20 h-20 bg-orange-500 rounded-2xl flex items-center justify-center text-3xl font-black text-slate-950 shadow-xl shadow-orange-500/20">
+        <div className="w-20 h-20 bg-emerald-500 rounded-2xl flex items-center justify-center text-3xl font-black text-slate-950 shadow-xl shadow-emerald-500/20">
           {(currentUser?.name || currentUser?.email || 'C').charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 text-center md:text-left">
@@ -5105,7 +5105,7 @@ const ProfileView = ({
         {showSettings && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             className="bg-slate-900 border border-slate-800 rounded-[28px] p-6 space-y-5">
-            <h3 className="font-black text-white flex items-center gap-2"><Settings size={18} className="text-orange-500" /> Configuración</h3>
+            <h3 className="font-black text-white flex items-center gap-2"><Settings size={18} className="text-emerald-500" /> Configuración</h3>
 
             {/* Notifications */}
             <div className="space-y-3">
@@ -5121,7 +5121,7 @@ const ProfileView = ({
                     <p className="text-[10px] text-slate-500">{n.desc}</p>
                   </div>
                   <button onClick={() => { n.set(!n.value); showToast('info', `${n.label}: ${!n.value ? 'activado' : 'desactivado'}`); }}
-                    className={cn("w-11 h-6 rounded-full transition-all relative", n.value ? "bg-orange-500" : "bg-slate-700")}>
+                    className={cn("w-11 h-6 rounded-full transition-all relative", n.value ? "bg-emerald-500" : "bg-slate-700")}>
                     <div className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm", n.value ? "right-0.5" : "left-0.5")} />
                   </button>
                 </div>
@@ -5142,7 +5142,7 @@ const ProfileView = ({
             </div>
 
             <button onClick={() => { showToast('success', 'Configuración guardada'); setShowSettings(false); }}
-              className="w-full bg-orange-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-400 transition-all shadow-lg shadow-orange-500/20">
+              className="w-full bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20">
               Guardar Cambios
             </button>
           </motion.div>
@@ -5151,7 +5151,7 @@ const ProfileView = ({
 
       {/* App info */}
       <div className="bg-slate-900/50 border border-slate-800 rounded-[24px] p-6 flex items-center gap-4">
-        <BrainCircuit size={32} className="text-orange-500 opacity-30 shrink-0" />
+        <BrainCircuit size={32} className="text-emerald-500 opacity-30 shrink-0" />
         <div>
           <p className="text-xs font-bold text-slate-400">Sports Management Hub v2.5 Pro</p>
           <p className="text-[10px] text-slate-600 mt-1">"La excelencia no es un acto, sino un hábito." — Aristóteles</p>
@@ -5175,7 +5175,7 @@ const PlayerDashboardView = ({
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-black text-slate-950">{player.name.charAt(0)}</div>
+          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950">{player.name.charAt(0)}</div>
           <div>
             <p className="font-black text-white">Hola, {player.name}</p>
             <p className="text-[10px] text-slate-500 font-mono uppercase">Panel del Jugador</p>
@@ -5270,8 +5270,8 @@ const PrepFisicaView = ({
             Guía práctica para hacer mejores jugadores. Desde los objetivos hasta el protocolo exacto de cada test.
           </p>
         </div>
-        <div className="shrink-0 p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20">
-          <Zap size={22} className="text-orange-500" />
+        <div className="shrink-0 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+          <Zap size={22} className="text-emerald-500" />
         </div>
       </div>
 
@@ -5280,7 +5280,7 @@ const PrepFisicaView = ({
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={cn('flex-1 px-3 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap',
-              activeTab === t.id ? 'bg-orange-500 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-slate-800')}>
+              activeTab === t.id ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-slate-800')}>
             {t.label}
           </button>
         ))}
@@ -5352,8 +5352,8 @@ const PrepFisicaView = ({
                   </div>
 
                   {/* Key principle */}
-                  <div className="bg-slate-950/60 rounded-xl p-4 border-l-2 border-orange-500">
-                    <p className="text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-1">Principio clave</p>
+                  <div className="bg-slate-950/60 rounded-xl p-4 border-l-2 border-emerald-500">
+                    <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Principio clave</p>
                     <p className="text-xs text-slate-300 leading-relaxed">{goalDetail.prescription.keyPrinciple}</p>
                   </div>
 
@@ -5386,7 +5386,7 @@ const PrepFisicaView = ({
               <SectionCard>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
                   El baloncesto exige los <span className="text-white font-semibold">tres sistemas energéticos</span> dependiendo de la duración e intensidad.
-                  La FC nunca debe bajar de <span className="text-orange-400 font-bold">110 ppm</span>; zona objetivo en entrenamiento: <span className="text-orange-400 font-bold">160–195 ppm</span>.
+                  La FC nunca debe bajar de <span className="text-emerald-400 font-bold">110 ppm</span>; zona objetivo en entrenamiento: <span className="text-emerald-400 font-bold">160–195 ppm</span>.
                 </p>
               </SectionCard>
 
@@ -5447,7 +5447,7 @@ const PrepFisicaView = ({
                     </div>
                     <div className="text-right shrink-0 space-y-1 min-w-[100px]">
                       <p className="text-[9px] text-blue-400 font-bold">{m.hr}</p>
-                      <p className="text-[9px] text-orange-400">{m.work}</p>
+                      <p className="text-[9px] text-emerald-400">{m.work}</p>
                       <p className="text-[9px] text-slate-600">Rec: {m.rest}</p>
                     </div>
                   </div>
@@ -5463,7 +5463,7 @@ const PrepFisicaView = ({
                 <p className="text-[10px] text-slate-500 leading-relaxed">
                   La fuerza es la base de la velocidad, la explosividad y la resistencia. Un bloque concentrado de fuerza antes de temporada
                   (5-6 semanas) tiene un efecto que dura todo el año. Secuencia obligatoria:&nbsp;
-                  <span className="text-orange-400 font-semibold">Resistencia → Hipertrofia → F.Máxima → Potencia → Mantenimiento.</span>
+                  <span className="text-emerald-400 font-semibold">Resistencia → Hipertrofia → F.Máxima → Potencia → Mantenimiento.</span>
                 </p>
               </SectionCard>
 
@@ -5476,10 +5476,10 @@ const PrepFisicaView = ({
                       <button onClick={() => setSelectedForce(c.id)}
                         className={cn('shrink-0 px-3 py-2.5 rounded-xl border text-center transition-all',
                           selectedForce === c.id
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/25'
+                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/25'
                             : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600')}>
                         <p className={cn('text-[9px] font-black uppercase', selectedForce === c.id ? 'text-white' : '')}>{c.label}</p>
-                        <p className={cn('text-[8px] mt-0.5', selectedForce === c.id ? 'text-orange-200' : c.phaseColor)}>{c.weeks}</p>
+                        <p className={cn('text-[8px] mt-0.5', selectedForce === c.id ? 'text-emerald-200' : c.phaseColor)}>{c.weeks}</p>
                       </button>
                       {i < FORCE_CYCLES.length - 1 && <ChevronRight size={12} className="text-slate-700 shrink-0" />}
                     </React.Fragment>
@@ -5488,7 +5488,7 @@ const PrepFisicaView = ({
               </SectionCard>
 
               {/* Selected cycle detail */}
-              <div className="bg-slate-900 border border-orange-500/25 rounded-[20px] p-6 space-y-5">
+              <div className="bg-slate-900 border border-emerald-500/25 rounded-[20px] p-6 space-y-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-black text-white text-lg">{selectedCycle.label}</h3>
@@ -5496,7 +5496,7 @@ const PrepFisicaView = ({
                   </div>
                   <div className="text-right">
                     <p className="text-[8px] text-slate-600 uppercase tracking-widest">Duración</p>
-                    <p className="text-base font-black text-orange-400">{selectedCycle.weeks}</p>
+                    <p className="text-base font-black text-emerald-400">{selectedCycle.weeks}</p>
                     <p className="text-[9px] text-slate-500 mt-0.5">{selectedCycle.freq}</p>
                   </div>
                 </div>
@@ -5513,7 +5513,7 @@ const PrepFisicaView = ({
                     <div key={kv.label} className="bg-slate-950 rounded-xl p-4 text-center">
                       <p className="text-lg mb-1">{kv.icon}</p>
                       <p className="text-[8px] text-slate-600 uppercase tracking-widest font-bold">{kv.label}</p>
-                      <p className="text-lg font-black text-orange-400 leading-tight mt-1">{kv.val}</p>
+                      <p className="text-lg font-black text-emerald-400 leading-tight mt-1">{kv.val}</p>
                     </div>
                   ))}
                 </div>
@@ -5526,7 +5526,7 @@ const PrepFisicaView = ({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {[
                     { freq: '1 vez / 15 días', effect: 'Disminuye la fuerza', color: 'text-red-400', bg: 'bg-red-500/5 border-red-500/15' },
-                    { freq: '1 vez / semana', effect: 'Mantenimiento', color: 'text-orange-400', bg: 'bg-orange-500/5 border-orange-500/15' },
+                    { freq: '1 vez / semana', effect: 'Mantenimiento', color: 'text-emerald-400', bg: 'bg-emerald-500/5 border-emerald-500/15' },
                     { freq: '2 veces / semana', effect: 'Aumento discreto', color: 'text-yellow-400', bg: 'bg-yellow-500/5 border-yellow-500/15' },
                     { freq: '3 veces / semana', effect: 'Buen incremento', color: 'text-emerald-400', bg: 'bg-emerald-500/5 border-emerald-500/15' },
                     { freq: '4 veces / semana', effect: 'Óptimo ✅', color: 'text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-500/25' },
@@ -5544,7 +5544,7 @@ const PrepFisicaView = ({
               <SectionCard className="space-y-3">
                 <h3 className="font-black text-white text-sm">Ejercicios clave por prioridad</h3>
                 {[
-                  { cat: 'Tren inferior (lo más importante en baloncesto)', exercises: ['½ Squat con barra', 'Sentadilla completa', 'Cargada / Arrancada', 'Zancadas con carga', 'Prensa de piernas'], color: 'text-orange-400' },
+                  { cat: 'Tren inferior (lo más importante en baloncesto)', exercises: ['½ Squat con barra', 'Sentadilla completa', 'Cargada / Arrancada', 'Zancadas con carga', 'Prensa de piernas'], color: 'text-emerald-400' },
                   { cat: 'Tren superior', exercises: ['Press banca', 'Remo con barra', 'Dominadas lastradas', 'Press militar', 'Fondos en paralelas'], color: 'text-blue-400' },
                   { cat: 'Potencia / Transferencia', exercises: ['Multisaltos verticales', 'Saltos sobre vallas', 'Lanzamiento balón medicinal', 'Le varju (saltitos con barra)', 'Pliometría combinada'], color: 'text-purple-400' },
                 ].map(cat => (
@@ -5630,7 +5630,7 @@ const PrepFisicaView = ({
                   <SectionCard className="space-y-3">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-black text-white text-sm">Estructura de sesión recomendada</h4>
-                      <span className="text-[8px] bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold">Solo bloque físico previo a pista</span>
+                      <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Solo bloque físico previo a pista</span>
                     </div>
                     {catDetail.sessionStructure.map((block: any, i: number) => (
                       <div key={i} className="flex items-start gap-3 py-2.5 border-b border-slate-800/40 last:border-0">
@@ -5638,7 +5638,7 @@ const PrepFisicaView = ({
                           {block.block}
                         </div>
                         <div>
-                          <p className="text-[9px] text-orange-400 font-bold">{block.time}</p>
+                          <p className="text-[9px] text-emerald-400 font-bold">{block.time}</p>
                           <p className="text-xs text-slate-400 mt-0.5">{block.content}</p>
                         </div>
                       </div>
@@ -5668,7 +5668,7 @@ const PrepFisicaView = ({
                       if (!plan) return <p className="text-xs text-slate-600 italic">No hay plan disponible para esta combinación.</p>;
                       const intensityColors: Record<string, string> = {
                         alta: 'bg-red-500/15 border-red-500/25 text-red-400',
-                        media: 'bg-orange-500/15 border-orange-500/25 text-orange-400',
+                        media: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
                         baja: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
                         libre: 'bg-slate-700 border-slate-600 text-slate-400',
                       };
@@ -5724,7 +5724,7 @@ const PrepFisicaView = ({
                       </div>
                       <span className={cn('text-[8px] font-black px-2.5 py-1 rounded-full border shrink-0', area.riskColor,
                         area.risk === 'Muy alto' ? 'bg-red-500/10 border-red-500/20' :
-                        area.risk === 'Alto' ? 'bg-orange-500/10 border-orange-500/20' :
+                        area.risk === 'Alto' ? 'bg-emerald-500/10 border-emerald-500/20' :
                         area.risk === 'Medio' ? 'bg-yellow-500/10 border-yellow-500/20' :
                         'bg-purple-500/10 border-purple-500/20')}>
                         {area.risk}
@@ -5745,7 +5745,7 @@ const PrepFisicaView = ({
                           <p className="text-xs font-bold text-white leading-tight">{m.name}</p>
                           <span className="text-[8px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-lg text-slate-400 shrink-0 font-bold">{m.phase}</span>
                         </div>
-                        <p className="text-[9px] text-orange-400 font-bold">{m.dose}</p>
+                        <p className="text-[9px] text-emerald-400 font-bold">{m.dose}</p>
                         <p className="text-[10px] text-slate-500 leading-relaxed">{m.effect}</p>
                       </div>
                     ))}
@@ -5772,7 +5772,7 @@ const PrepFisicaView = ({
                   </p>
                 </SectionCard>
                 <button onClick={handleSeedTests} disabled={seeding}
-                  className="shrink-0 flex items-center gap-2 px-4 py-3 bg-orange-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-orange-400 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20">
+                  className="shrink-0 flex items-center gap-2 px-4 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
                   {seeding ? <><Loader2 size={12} className="animate-spin" />Importando...</> : <><Download size={12} />Importar al equipo</>}
                 </button>
               </div>
@@ -5790,7 +5790,7 @@ const PrepFisicaView = ({
                     onClick={() => setTestCategoryFilter(f.id === testCategoryFilter ? 'all' : f.id)}
                     className={cn('text-[9px] px-3 py-1.5 rounded-lg border font-bold uppercase transition-all',
                       testCategoryFilter === f.id
-                        ? 'bg-orange-500 border-orange-500 text-white'
+                        ? 'bg-emerald-500 border-emerald-500 text-white'
                         : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300')}>
                     {f.label}
                   </button>
@@ -5810,7 +5810,7 @@ const PrepFisicaView = ({
                   const catColor = catColors[test.category] || 'text-slate-400 bg-slate-700/20 border-slate-600/20';
 
                   return (
-                    <div key={i} className={cn('bg-slate-900 border rounded-[20px] overflow-hidden transition-all', isExpanded ? 'border-orange-500/30' : 'border-slate-800')}>
+                    <div key={i} className={cn('bg-slate-900 border rounded-[20px] overflow-hidden transition-all', isExpanded ? 'border-emerald-500/30' : 'border-slate-800')}>
                       {/* Header (always visible) */}
                       <button onClick={() => setExpandedTest(isExpanded ? null : test.name)}
                         className="w-full flex items-center gap-4 p-5 text-left hover:bg-slate-800/30 transition-all">
@@ -5824,7 +5824,7 @@ const PrepFisicaView = ({
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={cn('text-[8px] font-bold px-2 py-1 rounded-lg border', catColor)}>{test.category}</span>
-                          <span className="text-[9px] font-mono text-orange-400 font-bold">{test.unit}</span>
+                          <span className="text-[9px] font-mono text-emerald-400 font-bold">{test.unit}</span>
                           <ChevronDown size={14} className={cn('text-slate-600 transition-transform', isExpanded && 'rotate-180')} />
                         </div>
                       </button>
@@ -5833,8 +5833,8 @@ const PrepFisicaView = ({
                       {isExpanded && (
                         <div className="px-5 pb-6 space-y-5 border-t border-slate-800">
                           {/* Basketball value */}
-                          <div className="bg-orange-500/5 border border-orange-500/15 rounded-xl p-4 mt-4">
-                            <p className="text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-1">¿Para qué sirve en baloncesto?</p>
+                          <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4 mt-4">
+                            <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">¿Para qué sirve en baloncesto?</p>
                             <p className="text-xs text-slate-300 leading-relaxed">{test.basketballValue}</p>
                           </div>
 
@@ -5878,7 +5878,7 @@ const PrepFisicaView = ({
                             <div className="grid grid-cols-4 gap-2">
                               {[
                                 { label: 'A mejorar', val: test.scoring.poor, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
-                                { label: 'Medio', val: test.scoring.average, color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+                                { label: 'Medio', val: test.scoring.average, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                                 { label: 'Bueno', val: test.scoring.good, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
                                 { label: 'Excelente', val: test.scoring.excellent, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                               ].map(s => (
@@ -5904,7 +5904,7 @@ const PrepFisicaView = ({
                                 showToast('success', `"${test.name}" añadido al equipo`);
                               } catch { showToast('error', 'Error al añadir el test'); }
                             }}
-                              className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-[10px] font-bold uppercase hover:border-orange-500/30 hover:text-orange-400 transition-all">
+                              className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-[10px] font-bold uppercase hover:border-emerald-500/30 hover:text-emerald-400 transition-all">
                               <Plus size={11} /> Añadir este test al equipo
                             </button>
                           )}
@@ -5925,7 +5925,7 @@ const PrepFisicaView = ({
 
 
 const TEAM_PALETTE = [
-  { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', dot: 'bg-orange-500' },
+  { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
   { bg: 'bg-blue-500/20',   text: 'text-blue-400',   border: 'border-blue-500/30',   dot: 'bg-blue-500' },
   { bg: 'bg-emerald-500/20',text: 'text-emerald-400', border: 'border-emerald-500/30',dot: 'bg-emerald-500' },
   { bg: 'bg-purple-500/20', text: 'text-purple-400',  border: 'border-purple-500/30', dot: 'bg-purple-500' },
@@ -6025,7 +6025,7 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
         <div className="flex items-center gap-2">
           {!isCurrentWeek && (
             <button onClick={() => { setCurrentDate(new Date()); setSelectedDay(null); }}
-              className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-orange-500 text-slate-950 rounded-xl hover:bg-orange-400 transition-all">
+              className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-slate-950 rounded-xl hover:bg-emerald-400 transition-all">
               Hoy
             </button>
           )}
@@ -6058,7 +6058,7 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
       {/* Single-team callout */}
       {teams.length === 1 && (
         <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-500">
-          <Calendar size={14} className="text-orange-500 shrink-0" />
+          <Calendar size={14} className="text-emerald-500 shrink-0" />
           Crea más equipos para ver todos tus horarios consolidados aquí.
         </div>
       )}
@@ -6066,7 +6066,7 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
       {/* Weekly grid */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-600">
-          <div className="animate-spin w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full mr-3" />
+          <div className="animate-spin w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full mr-3" />
           Cargando agenda...
         </div>
       ) : (
@@ -6083,17 +6083,17 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
                 className={cn(
                   'flex flex-col items-center rounded-2xl p-2 pb-3 border transition-all min-h-[110px] text-left',
                   isToday
-                    ? 'bg-orange-500/10 border-orange-500/40'
+                    ? 'bg-emerald-500/10 border-emerald-500/40'
                     : isSelected
                     ? 'bg-slate-800 border-slate-600'
                     : 'bg-slate-900 border-slate-800 hover:border-slate-700',
                 )}>
                 <span className={cn('text-[9px] font-bold uppercase tracking-widest mb-1 w-full text-center',
-                  isToday ? 'text-orange-400' : 'text-slate-500')}>
+                  isToday ? 'text-emerald-400' : 'text-slate-500')}>
                   {DAY_LABELS[i]}
                 </span>
                 <span className={cn('text-lg font-black leading-none mb-2',
-                  isToday ? 'text-orange-400' : 'text-white')}>
+                  isToday ? 'text-emerald-400' : 'text-white')}>
                   {day.getDate()}
                 </span>
                 <div className="flex flex-col gap-1 w-full px-0.5">
@@ -6671,7 +6671,7 @@ export default function App() {
   if (appStatus === 'LOADING') return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center space-y-3">
-        <Loader2 className="text-orange-500 animate-spin mx-auto" size={40} />
+        <Loader2 className="text-emerald-500 animate-spin mx-auto" size={40} />
         <p className="text-[10px] font-mono text-slate-600 uppercase tracking-widest">Conectando con Supabase...</p>
       </div>
     </div>
@@ -6787,7 +6787,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-orange-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-emerald-500/30">
       <Sidebar activeTab={activeTab} setActiveTab={t => { setActiveTab(t); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
         activeTeam={activeTeam} onSwitchTeam={handleSwitchTeam} onLogout={handleLogout} currentUser={currentUser} />
 
@@ -6818,7 +6818,7 @@ export default function App() {
                 <span className={cn("w-1.5 h-1.5 rounded-full", isSupabaseConfigured ? "bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" : "bg-yellow-500")}></span>
                 {isSupabaseConfigured ? 'Supabase Activo' : 'Modo Local'}
               </span>
-              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_5px_rgba(249,115,22,0.5)]"></span>Gemini AI</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>Gemini AI</span>
             </div>
           </footer>
         </div>
@@ -6832,7 +6832,7 @@ export default function App() {
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-slate-900 border border-slate-800 p-8 rounded-[28px] w-full max-w-md shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-white flex items-center gap-2"><Dumbbell size={18} className="text-orange-500" /> Nuevo Test</h3>
+                <h3 className="text-xl font-black text-white flex items-center gap-2"><Dumbbell size={18} className="text-emerald-500" /> Nuevo Test</h3>
                 <button onClick={() => setIsAddingTestDefinition(false)} className="text-slate-500 hover:text-white"><X size={20} /></button>
               </div>
               <div className="space-y-4">
@@ -6846,11 +6846,11 @@ export default function App() {
                         <button key={t.name} onClick={() => !exists && setTestDefinitionForm({ name: t.name, unit: t.unit })} disabled={exists}
                           className={cn('w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-all',
                             exists ? 'opacity-40 cursor-not-allowed' :
-                            testDefinitionForm.name === t.name ? 'bg-orange-500/15 border border-orange-500/30' : 'hover:bg-slate-800')}>
+                            testDefinitionForm.name === t.name ? 'bg-emerald-500/15 border border-emerald-500/30' : 'hover:bg-slate-800')}>
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{t.icon}</span>
                             <div>
-                              <p className={cn('text-xs font-bold', testDefinitionForm.name === t.name ? 'text-orange-400' : 'text-white')}>{t.name}</p>
+                              <p className={cn('text-xs font-bold', testDefinitionForm.name === t.name ? 'text-emerald-400' : 'text-white')}>{t.name}</p>
                               <p className="text-[9px] text-slate-500">{t.shortPurpose.split('—')[0].trim()}</p>
                             </div>
                           </div>
@@ -6870,13 +6870,13 @@ export default function App() {
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Nombre del Test</label>
                   <input value={testDefinitionForm.name} onChange={e => setTestDefinitionForm({...testDefinitionForm, name: e.target.value})}
                     placeholder="Sprint 30m, Salto Vertical, CMJ..." autoFocus
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500/50" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Unidad</label>
                   <input value={testDefinitionForm.unit} onChange={e => setTestDefinitionForm({...testDefinitionForm, unit: e.target.value})}
                     placeholder="s, cm, kg, reps, W/kg..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-orange-500/50" />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50" />
                 </div>
                 <button onClick={async () => {
                   if (testDefinitionForm.name && testDefinitionForm.unit) {
@@ -6884,7 +6884,7 @@ export default function App() {
                     setIsAddingTestDefinition(false);
                     setTestDefinitionForm({ name: '', unit: '' });
                   }
-                }} className="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-[10px] uppercase tracking-widest hover:bg-orange-400 transition-all shadow-lg shadow-orange-500/20 mt-2">
+                }} className="w-full bg-emerald-500 text-slate-950 font-black py-4 rounded-xl text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 mt-2">
                   Crear Test
                 </button>
               </div>

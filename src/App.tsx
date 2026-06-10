@@ -734,7 +734,7 @@ const Sidebar = ({
       {/* Logo */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onSwitchTeam}>
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-emerald-500/25">SH</div>
+          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-emerald-500/25">CK</div>
           <div>
             <p className="font-black text-sm text-white tracking-tight leading-none">CoachKit</p>
             <p className="text-[8px] text-slate-600 uppercase tracking-widest font-mono mt-0.5">v2.5 Pro</p>
@@ -3214,7 +3214,7 @@ const DashboardView = ({
                 <YAxis yAxisId="left" fontSize={9} axisLine={false} tickLine={false} stroke="#475569" />
                 <YAxis yAxisId="right" orientation="right" domain={[1, 5]} fontSize={9} axisLine={false} tickLine={false} stroke="#475569" />
                 <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '11px' }} />
-                <Bar yAxisId="left" dataKey="load" fill="#f97316" fillOpacity={0.5} radius={[4, 4, 0, 0]} name="Carga AU" />
+                <Bar yAxisId="left" dataKey="load" fill="#10b981" fillOpacity={0.5} radius={[4, 4, 0, 0]} name="Carga AU" />
                 <Line yAxisId="right" type="monotone" dataKey="wellness" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 3 }} name="Wellness /5" connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
@@ -3400,7 +3400,7 @@ const HealthView = ({
   const getACWRColor = (v: number) => {
     if (v < 0.8 || v > 1.5) return '#ef4444';
     if (v >= 0.8 && v <= 1.3) return '#10b981';
-    return '#f97316';
+    return '#10b981';
   };
 
   const handleSaveIncident = async () => {
@@ -3509,13 +3509,13 @@ const HealthView = ({
                     formatter={(v: any, n: string) => [n === 'Wellness' ? `${Number(v).toFixed(1)}/5` : `${v} AU`, n]} />
                   {/* Risk zones */}
                   <ReferenceLine y={3.2} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
-                  <ReferenceLine y={2.5} stroke="#f97316" strokeDasharray="4 4" strokeOpacity={0.5} />
-                  <ReferenceLine x={700} stroke="#f97316" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine y={2.5} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine x={700} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.5} />
                   <ReferenceLine x={800} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
                   <Scatter name="Jugadores" data={scatterData}
                     shape={(props: any) => {
                       const { cx, cy, payload } = props;
-                      const c = payload.risk >= 75 ? '#ef4444' : payload.risk >= 55 ? '#f97316' : '#10b981';
+                      const c = payload.risk >= 75 ? '#ef4444' : payload.risk >= 55 ? '#10b981' : '#10b981';
                       return <circle cx={cx} cy={cy} r={7} fill={c} fillOpacity={0.8} stroke={c} strokeWidth={1} />;
                     }} />
                 </ScatterChart>
@@ -3554,7 +3554,7 @@ const HealthView = ({
                   <ReferenceLine x={1.3} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.6} />
                   <ReferenceLine x={1.5} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.6} />
                   <Bar dataKey="acwr" radius={[0, 6, 6, 0]}
-                    fill="#f97316" />
+                    fill="#10b981" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -4588,7 +4588,7 @@ const PlayerDetailDashboard = ({
                     <YAxis yAxisId="left" fontSize={8} axisLine={false} tickLine={false} stroke="#475569" />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 5]} fontSize={8} axisLine={false} tickLine={false} stroke="#475569" />
                     <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '10px' }} />
-                    <Bar yAxisId="left" dataKey="load" fill="#f97316" fillOpacity={0.4} radius={[3, 3, 0, 0]} name="Carga AU" />
+                    <Bar yAxisId="left" dataKey="load" fill="#10b981" fillOpacity={0.4} radius={[3, 3, 0, 0]} name="Carga AU" />
                     <Line yAxisId="right" type="monotone" dataKey="wellness" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} name="Wellness /5" connectNulls />
                   </ComposedChart>
                 </ResponsiveContainer>

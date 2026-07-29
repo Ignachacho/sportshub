@@ -35,7 +35,7 @@ import {
   Info, CheckCircle, Clock, MapPin, Zap, Target, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
-  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, Trash2
+  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -3119,13 +3119,49 @@ const GroupReadinessBanner = ({
 // DASHBOARD VIEW
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Dashboard widget config ──────────────────────────────────────────────────
+const DASH_WIDGETS = [
+  { id: 'banner',       label: 'Banner disponibilidad grupal' },
+  { id: 'kpi',          label: 'Tarjetas KPI' },
+  { id: 'chart',        label: 'Gráfico carga & wellness' },
+  { id: 'availability', label: 'Disponibilidad del equipo' },
+  { id: 'sessions',     label: 'Últimas sesiones' },
+];
+type WidgetCfg = { id: string; visible: boolean };
+const getDashCfg = (coachId: string): WidgetCfg[] => {
+  try { const s = localStorage.getItem(`ck_dash_${coachId}`); if (s) return JSON.parse(s); } catch {}
+  return DASH_WIDGETS.map(w => ({ id: w.id, visible: true }));
+};
+const saveDashCfg = (coachId: string, cfg: WidgetCfg[]) =>
+  localStorage.setItem(`ck_dash_${coachId}`, JSON.stringify(cfg));
+
 const DashboardView = ({
-  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords
+  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, coachId
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
   wellnessReports: WellnessReport[]; sessions: Session[];
-  onNavigate: (tab: string) => void; loadRecords: LoadRecord[];
+  onNavigate: (tab: string) => void; loadRecords: LoadRecord[]; coachId?: string;
 }) => {
+  const [cfgOpen, setCfgOpen] = useState(false);
+  const [widgets, setWidgets] = useState<WidgetCfg[]>(() => getDashCfg(coachId || 'default'));
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
+  const toggleWidget = (id: string) => {
+    const next = widgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w);
+    setWidgets(next); saveDashCfg(coachId || 'default', next);
+  };
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOver(idx); };
+  const handleDrop = (idx: number) => {
+    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOver(null); return; }
+    const next = [...widgets];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(idx, 0, moved);
+    setWidgets(next); saveDashCfg(coachId || 'default', next);
+    setDragIdx(null); setDragOver(null);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setDragOver(null); };
   const players = subjects.filter(s => s.role === Role.PLAYER);
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -3168,17 +3204,17 @@ const DashboardView = ({
   const atRiskCount = playerReadiness.filter(pr => (pr.risk || 0) >= 55).length;
   const wellnessFilled = todayWellness.length;
 
-  return (
-    <div className="space-y-6">
-      <GroupReadinessBanner subjects={subjects} wellnessReports={wellnessReports} loadRecords={loadRecords} sessions={sessions} />
+  // ── Widget render map ────────────────────────────────────────────────────────
+  const widgetMap: Record<string, React.ReactNode> = {
+    banner: <GroupReadinessBanner key="banner" subjects={subjects} wellnessReports={wellnessReports} loadRecords={loadRecords} sessions={sessions} />,
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    kpi: (
+      <div key="kpi" className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Jugadores', value: players.length, sub: `${subjects.filter(s => s.role === Role.STAFF).length} staff`, icon: Users, color: 'text-blue-400', action: 'roster' },
-          { label: 'Wellness hoy', value: `${wellnessFilled}/${players.length}`, sub: `${players.length - wellnessFilled} pendientes`, icon: Activity, color: wellnessFilled < players.length ? 'text-emerald-400' : 'text-emerald-400', action: 'wellness' },
+          { label: 'Wellness hoy', value: `${wellnessFilled}/${players.length}`, sub: `${players.length - wellnessFilled} pendientes`, icon: Activity, color: 'text-emerald-400', action: 'wellness' },
           { label: 'Lesiones activas', value: activeIncidents.length, sub: `${activeIncidents.filter(i => i.severity === 'high').length} críticas`, icon: HeartPulse, color: activeIncidents.length > 0 ? 'text-red-400' : 'text-emerald-400', action: 'health' },
-          { label: 'En riesgo hoy', value: atRiskCount, sub: 'jugadores ≥ 55% riesgo', icon: AlertTriangle, color: atRiskCount > 0 ? 'text-emerald-400' : 'text-emerald-400', action: 'health' },
+          { label: 'En riesgo hoy', value: atRiskCount, sub: 'jugadores ≥ 55% riesgo', icon: AlertTriangle, color: atRiskCount > 0 ? 'text-yellow-400' : 'text-emerald-400', action: 'health' },
         ].map(kpi => (
           <button key={kpi.label} onClick={() => onNavigate(kpi.action)}
             className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left group hover:border-slate-700 transition-all hover:bg-slate-900/80">
@@ -3192,9 +3228,10 @@ const DashboardView = ({
           </button>
         ))}
       </div>
+    ),
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly load + wellness chart */}
+    chart: (
+      <div key="chart" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-[24px] p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
@@ -3220,8 +3257,6 @@ const DashboardView = ({
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Sidebar: next match + quick links */}
         <div className="space-y-4">
           {nextMatch && (
             <div className="bg-slate-900 border border-slate-800 rounded-[20px] p-5 cursor-pointer hover:border-slate-700 transition-all" onClick={() => onNavigate('matches')}>
@@ -3231,7 +3266,6 @@ const DashboardView = ({
               {nextMatch.location && <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-1"><MapPin size={10} />{nextMatch.location}</p>}
             </div>
           )}
-
           <div className="bg-slate-900 border border-slate-800 rounded-[20px] p-5">
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3">Accesos Rápidos</p>
             <div className="space-y-2">
@@ -3251,9 +3285,10 @@ const DashboardView = ({
           </div>
         </div>
       </div>
+    ),
 
-      {/* Player readiness table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+    availability: (
+      <div key="availability" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <div>
             <h3 className="font-black text-white text-sm">Disponibilidad del Equipo</h3>
@@ -3265,12 +3300,9 @@ const DashboardView = ({
           <table className="w-full text-left">
             <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
               <tr>
-                <th className="px-6 py-3">#</th>
-                <th className="px-6 py-3">Jugador</th>
-                <th className="px-6 py-3 text-center">Wellness</th>
-                <th className="px-6 py-3 text-center">Carga Ayer</th>
-                <th className="px-6 py-3 text-center">Riesgo</th>
-                <th className="px-6 py-3 text-center">Estado</th>
+                <th className="px-6 py-3">#</th><th className="px-6 py-3">Jugador</th>
+                <th className="px-6 py-3 text-center">Wellness</th><th className="px-6 py-3 text-center">Carga Ayer</th>
+                <th className="px-6 py-3 text-center">Riesgo</th><th className="px-6 py-3 text-center">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
@@ -3279,37 +3311,11 @@ const DashboardView = ({
                 return (
                   <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
                     <td className="px-6 py-3 text-[10px] font-mono text-slate-600">#{player.number}</td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{player.name}</span>
-                        {hasIncident && <AlertCircle size={12} className="text-red-400" />}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 text-center">
-                      {wellness !== null ? (
-                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", wellness <= 2 ? 'bg-emerald-500/15 text-emerald-400' : wellness <= 3.5 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400')}>
-                          {wellness.toFixed(1)}/5
-                        </span>
-                      ) : <span className="text-[10px] text-slate-700">—</span>}
-                    </td>
+                    <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{player.name}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
+                    <td className="px-6 py-3 text-center">{wellness !== null ? <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", wellness <= 3.5 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400')}>{wellness.toFixed(1)}/5</span> : <span className="text-[10px] text-slate-700">—</span>}</td>
                     <td className="px-6 py-3 text-center text-[10px] text-slate-500 font-mono">{yLoad > 0 ? `${Math.round(yLoad)} AU` : '—'}</td>
-                    <td className="px-6 py-3 text-center">
-                      {risk !== null ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div className={cn("h-full rounded-full transition-all", rc?.bg)} style={{ width: `${risk}%` }} />
-                          </div>
-                          <span className={cn("text-[9px] font-bold", rc?.text)}>{risk}%</span>
-                        </div>
-                      ) : <span className="text-[10px] text-slate-700">—</span>}
-                    </td>
-                    <td className="px-6 py-3 text-center">
-                      {risk !== null ? (
-                        <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", rc?.bg.replace('bg-', 'bg-').replace('500', '500/15'), rc?.text, rc?.border)}>
-                          {rc?.label}
-                        </span>
-                      ) : <span className="text-[9px] text-slate-700">Sin datos</span>}
-                    </td>
+                    <td className="px-6 py-3 text-center">{risk !== null ? <div className="flex items-center justify-center gap-2"><div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={cn("h-full rounded-full", rc?.bg)} style={{ width: `${risk}%` }} /></div><span className={cn("text-[9px] font-bold", rc?.text)}>{risk}%</span></div> : <span className="text-[10px] text-slate-700">—</span>}</td>
+                    <td className="px-6 py-3 text-center">{risk !== null ? <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", rc?.bg.replace('500', '500/15'), rc?.text, rc?.border)}>{rc?.label}</span> : <span className="text-[9px] text-slate-700">Sin datos</span>}</td>
                   </tr>
                 );
               })}
@@ -3317,27 +3323,87 @@ const DashboardView = ({
           </table>
         </div>
       </div>
+    ),
 
-      {/* Recent sessions */}
-      {recentSessions.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-            <h3 className="font-black text-white text-sm">Últimas Sesiones</h3>
-            <button onClick={() => onNavigate('sessions')} className="text-[9px] font-bold text-emerald-500 hover:underline uppercase tracking-wider">Ver todas →</button>
-          </div>
-          <div className="divide-y divide-slate-800/50">
-            {recentSessions.map(s => (
-              <div key={s.id} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-950/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Timer size={14} className="text-slate-600" />
-                  <div>
-                    <p className="text-sm font-bold text-white">{s.title || 'Sesión'}</p>
-                    <p className="text-[10px] text-slate-600">{new Date(s.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
-                  </div>
+    sessions: recentSessions.length > 0 ? (
+      <div key="sessions" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <h3 className="font-black text-white text-sm">Últimas Sesiones</h3>
+          <button onClick={() => onNavigate('sessions')} className="text-[9px] font-bold text-emerald-500 hover:underline uppercase tracking-wider">Ver todas →</button>
+        </div>
+        <div className="divide-y divide-slate-800/50">
+          {recentSessions.map(s => (
+            <div key={s.id} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-950/30 transition-colors">
+              <div className="flex items-center gap-3">
+                <Timer size={14} className="text-slate-600" />
+                <div>
+                  <p className="text-sm font-bold text-white">{s.title || 'Sesión'}</p>
+                  <p className="text-[10px] text-slate-600">{new Date(s.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
                 </div>
-                <span className="text-[9px] font-bold text-slate-600 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">{s.type}</span>
               </div>
-            ))}
+              <span className="text-[9px] font-bold text-slate-600 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">{s.type}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header con botón personalizar */}
+      <div className="flex justify-end">
+        <button onClick={() => setCfgOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-bold text-slate-400 hover:text-white transition-all uppercase tracking-wider">
+          <Settings size={12} /> Personalizar
+        </button>
+      </div>
+
+      {/* Widgets en orden */}
+      {widgets.filter(w => w.visible).map(w => widgetMap[w.id])}
+
+      {/* Panel de configuración */}
+      {cfgOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setCfgOpen(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-[24px] p-6 w-full max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-black text-white text-sm">Personalizar dashboard</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">Arrastra para reordenar · Toggle para mostrar/ocultar</p>
+              </div>
+              <button onClick={() => setCfgOpen(false)} className="text-slate-600 hover:text-white transition-colors"><X size={18} /></button>
+            </div>
+            <div className="space-y-2">
+              {widgets.map((w, idx) => {
+                const def = DASH_WIDGETS.find(d => d.id === w.id);
+                return (
+                  <div key={w.id}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={e => handleDragOver(e, idx)}
+                    onDrop={() => handleDrop(idx)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing select-none",
+                      dragOver === idx && dragIdx !== idx ? "border-emerald-500/50 bg-emerald-500/10" : "border-slate-800 bg-slate-950",
+                      dragIdx === idx ? "opacity-40" : "opacity-100"
+                    )}>
+                    <GripVertical size={14} className="text-slate-600 shrink-0" />
+                    <span className="text-xs text-slate-300 flex-1">{def?.label}</span>
+                    <button onClick={() => toggleWidget(w.id)}
+                      className={cn("w-9 h-5 rounded-full transition-all relative shrink-0", w.visible ? "bg-emerald-500" : "bg-slate-700")}>
+                      <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow", w.visible ? "left-4" : "left-0.5")} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={() => {
+              const reset = DASH_WIDGETS.map(w => ({ id: w.id, visible: true }));
+              setWidgets(reset); saveDashCfg(coachId || 'default', reset);
+            }} className="mt-4 w-full py-2.5 rounded-xl border border-slate-800 text-[10px] font-bold text-slate-500 hover:text-white hover:border-slate-600 transition-all uppercase tracking-wider">
+              Restablecer por defecto
+            </button>
           </div>
         </div>
       )}
@@ -6723,7 +6789,7 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard': return (
         <DashboardView subjects={teamSubjects} incidents={incidents} matches={matches}
-          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} />
+          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} coachId={currentUser?.id} />
       );
       case 'agenda': return (
         <AgendaView teams={teams} />

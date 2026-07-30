@@ -3204,19 +3204,59 @@ const DashboardView = ({
   const atRiskCount = playerReadiness.filter(pr => (pr.risk || 0) >= 55).length;
   const wellnessFilled = todayWellness.length;
 
+  // ── KPI catalog ─────────────────────────────────────────────────────────────
+  const sessionsThisWeek = (() => {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    return sessions.filter(s => s.date >= weekAgo).length;
+  })();
+  const avgLoad7 = (() => {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const recent = loadRecords.filter(l => {
+      const sess = sessions.find(s => s.id === l.sessionId);
+      return sess && sess.date >= weekAgo;
+    });
+    if (!recent.length) return null;
+    return Math.round(recent.reduce((a, l) => a + (l.sessionLoad || 0), 0) / recent.length);
+  })();
+  const avgWellness7 = (() => {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const recent = wellnessReports.filter(w => w.date >= weekAgo);
+    if (!recent.length) return null;
+    const avg = recent.reduce((a, w) => a + (w.fatigue + w.sleepQuality + w.muscleSoreness + w.stressLevel + w.mood) / 5, 0) / recent.length;
+    return avg.toFixed(1);
+  })();
+  const daysToNextMatch = nextMatch ? Math.max(0, Math.ceil((new Date(nextMatch.date).getTime() - Date.now()) / 86400000)) : null;
+
+  const KPI_CATALOG = [
+    { id: 'players',       label: 'Jugadores',           value: players.length,                            sub: `${subjects.filter(s => s.role === Role.STAFF).length} staff`,           icon: Users,        color: 'text-blue-400',    action: 'roster'   },
+    { id: 'wellness',      label: 'Wellness hoy',         value: `${wellnessFilled}/${players.length}`,     sub: `${players.length - wellnessFilled} pendientes`,                          icon: Activity,     color: 'text-emerald-400', action: 'wellness' },
+    { id: 'injuries',      label: 'Lesiones activas',     value: activeIncidents.length,                    sub: `${activeIncidents.filter(i => i.severity === 'high').length} críticas`,  icon: HeartPulse,   color: activeIncidents.length > 0 ? 'text-red-400' : 'text-emerald-400', action: 'health' },
+    { id: 'risk',          label: 'En riesgo hoy',        value: atRiskCount,                               sub: 'jugadores ≥ 55% riesgo',                                                 icon: AlertTriangle,color: atRiskCount > 0 ? 'text-yellow-400' : 'text-emerald-400', action: 'health' },
+    { id: 'sessions_week', label: 'Sesiones esta semana', value: sessionsThisWeek,                          sub: 'últimos 7 días',                                                         icon: Calendar,     color: 'text-purple-400',  action: 'sessions' },
+    { id: 'avg_load',      label: 'Carga media 7d',       value: avgLoad7 !== null ? `${avgLoad7} AU` : '—', sub: 'carga media por jugador',                                              icon: Zap,          color: 'text-yellow-400',  action: 'wellness' },
+    { id: 'avg_wellness',  label: 'Wellness medio 7d',    value: avgWellness7 !== null ? `${avgWellness7}/5` : '—', sub: 'promedio del equipo',                                          icon: TrendingUp,   color: 'text-emerald-400', action: 'wellness' },
+    { id: 'next_match',    label: 'Próximo partido',      value: daysToNextMatch !== null ? `${daysToNextMatch}d` : '—', sub: nextMatch ? `vs ${nextMatch.opponent}` : 'sin programar', icon: Trophy,       color: 'text-emerald-400', action: 'matches'  },
+  ];
+
+  const getKpiCfg = (): string[] => {
+    try { const s = localStorage.getItem(`ck_kpi_${coachId || 'default'}`); if (s) return JSON.parse(s); } catch {}
+    return ['players', 'wellness', 'injuries', 'risk'];
+  };
+  const [activeKpis, setActiveKpis] = useState<string[]>(getKpiCfg);
+  const saveKpiCfg = (ids: string[]) => {
+    setActiveKpis(ids);
+    localStorage.setItem(`ck_kpi_${coachId || 'default'}`, JSON.stringify(ids));
+  };
+
   // ── Widget render map ────────────────────────────────────────────────────────
+  const visibleKpis = KPI_CATALOG.filter(k => activeKpis.includes(k.id));
   const widgetMap: Record<string, React.ReactNode> = {
     banner: <GroupReadinessBanner key="banner" subjects={subjects} wellnessReports={wellnessReports} loadRecords={loadRecords} sessions={sessions} />,
 
     kpi: (
-      <div key="kpi" className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Jugadores', value: players.length, sub: `${subjects.filter(s => s.role === Role.STAFF).length} staff`, icon: Users, color: 'text-blue-400', action: 'roster' },
-          { label: 'Wellness hoy', value: `${wellnessFilled}/${players.length}`, sub: `${players.length - wellnessFilled} pendientes`, icon: Activity, color: 'text-emerald-400', action: 'wellness' },
-          { label: 'Lesiones activas', value: activeIncidents.length, sub: `${activeIncidents.filter(i => i.severity === 'high').length} críticas`, icon: HeartPulse, color: activeIncidents.length > 0 ? 'text-red-400' : 'text-emerald-400', action: 'health' },
-          { label: 'En riesgo hoy', value: atRiskCount, sub: 'jugadores ≥ 55% riesgo', icon: AlertTriangle, color: atRiskCount > 0 ? 'text-yellow-400' : 'text-emerald-400', action: 'health' },
-        ].map(kpi => (
-          <button key={kpi.label} onClick={() => onNavigate(kpi.action)}
+      <div key="kpi" className={`grid gap-4 ${visibleKpis.length <= 2 ? 'grid-cols-2' : visibleKpis.length === 3 ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
+        {visibleKpis.map(kpi => (
+          <button key={kpi.id} onClick={() => onNavigate(kpi.action)}
             className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left group hover:border-slate-700 transition-all hover:bg-slate-900/80">
             <div className="flex items-start justify-between mb-3">
               <kpi.icon size={18} className={cn(kpi.color, 'opacity-70')} />
@@ -3398,9 +3438,32 @@ const DashboardView = ({
                 );
               })}
             </div>
+            {/* KPI section */}
+            <div className="mt-5 pt-4 border-t border-slate-800">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Tarjetas KPI visibles</p>
+              <div className="space-y-2">
+                {KPI_CATALOG.map(kpi => {
+                  const active = activeKpis.includes(kpi.id);
+                  return (
+                    <div key={kpi.id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-950">
+                      <kpi.icon size={13} className={kpi.color} />
+                      <span className="text-xs text-slate-300 flex-1">{kpi.label}</span>
+                      <button onClick={() => {
+                        const next = active ? activeKpis.filter(id => id !== kpi.id) : [...activeKpis, kpi.id];
+                        saveKpiCfg(next);
+                      }} className={cn("w-9 h-5 rounded-full transition-all relative shrink-0", active ? "bg-emerald-500" : "bg-slate-700")}>
+                        <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow", active ? "left-4" : "left-0.5")} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <button onClick={() => {
               const reset = DASH_WIDGETS.map(w => ({ id: w.id, visible: true }));
               setWidgets(reset); saveDashCfg(coachId || 'default', reset);
+              saveKpiCfg(['players', 'wellness', 'injuries', 'risk']);
             }} className="mt-4 w-full py-2.5 rounded-xl border border-slate-800 text-[10px] font-bold text-slate-500 hover:text-white hover:border-slate-600 transition-all uppercase tracking-wider">
               Restablecer por defecto
             </button>

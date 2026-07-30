@@ -275,18 +275,19 @@ const LoginView = ({
     if (mode === 'login') {
       onLogin(email, pin);
     } else if (mode === 'register') {
-      if (pin.length < 6) { setLocalErr('La contraseña debe tener al menos 6 caracteres'); return; }
+      if (pin.length < 4) { setLocalErr('La contraseña debe tener al menos 4 caracteres'); return; }
       onRegister(email, pin, name);
     } else {
-      // forgot — solo email, Supabase envía el link de reset
-      onForgotPin(email);
+      if (newPin.length < 4) { setLocalErr('La contraseña debe tener al menos 4 caracteres'); return; }
+      if (newPin !== confirmPin) { setLocalErr('Las contraseñas no coinciden'); return; }
+      onForgotPin(email, newPin);
     }
   };
 
   const titles: Record<Mode, { title: string; sub: string; btn: string }> = {
-    login:    { title: 'Bienvenido',        sub: 'Panel del Entrenador',              btn: 'Iniciar Sesión'              },
-    register: { title: 'Crear Cuenta',      sub: 'Nuevo Entrenador',                  btn: 'Registrarse'                 },
-    forgot:   { title: 'Recuperar Acceso',  sub: 'Te enviamos un link por email',     btn: 'Enviar Email de Recuperación'},
+    login:    { title: 'Bienvenido',        sub: 'Panel del Entrenador',          btn: 'Iniciar Sesión'        },
+    register: { title: 'Crear Cuenta',      sub: 'Nuevo Entrenador',              btn: 'Registrarse'           },
+    forgot:   { title: 'Recuperar Acceso',  sub: 'Restablece tu contraseña',      btn: 'Actualizar Contraseña' },
   };
   const { title, sub, btn } = titles[mode];
   const displayErr = localErr || error;
@@ -384,18 +385,34 @@ const LoginView = ({
                 </div>
               )}
 
-              {/* Forgot mode — solo info, sin campos de nueva contraseña */}
+              {/* New PIN — forgot mode */}
               <AnimatePresence>
                 {mode === 'forgot' && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
-                    className="overflow-hidden"
+                    className="overflow-hidden space-y-4"
                   >
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
+                      <input
+                        type="password" value={newPin} onChange={e => setNewPin(e.target.value)} required
+                        placeholder="Mínimo 4 caracteres"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Confirmar Contraseña</label>
+                      <input
+                        type="password" value={confirmPin} onChange={e => setConfirmPin(e.target.value)} required
+                        placeholder="Repite la contraseña"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
+                      />
+                    </div>
                     <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5">
                       <Info size={13} className="text-emerald-400 shrink-0 mt-0.5" />
                       <p className="text-emerald-300/90 text-[11px] leading-relaxed">
-                        Te enviaremos un link seguro al email indicado. Desde ese link podrás establecer tu nueva contraseña.
+                        Si tu email está registrado en el sistema podrás actualizar tu contraseña directamente.
                       </p>
                     </div>
                   </motion.div>
@@ -7757,41 +7774,21 @@ export default function App() {
   const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // AUTH INIT — Supabase Auth nativo (JWT + refresh automático)
+  // AUTH INIT — Custom coaches-table auth (bcrypt PIN)
   // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isSupabaseConfigured) { setAppStatus('LOGIN'); return; }
-
-    const restoreSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { setAppStatus('LOGIN'); return; }
-      const { data: coach } = await supabase
-        .from('coaches').select('id, name, email')
-        .eq('auth_id', session.user.id).single();
-      if (coach) {
+    const savedCoach = localStorage.getItem('sh_coach');
+    if (savedCoach) {
+      try {
+        const coach = JSON.parse(savedCoach);
         setCurrentUser(coach);
         setAppStatus('TEAM_SELECT');
         fetchCoachData(coach.id);
-      } else {
-        setAppStatus('LOGIN');
-      }
-    };
-    restoreSession();
-
-    // Escuchar cambios de auth (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          setCurrentUser(null); setActiveTeam(null); setAppStatus('LOGIN');
-        } else if (event === 'PASSWORD_RECOVERY') {
-          // El usuario llegó desde el link de reset — mostrar login para nueva contraseña
-          setAppStatus('LOGIN');
-        }
-        // SIGNED_IN y TOKEN_REFRESHED los gestiona restoreSession al montar
-      }
-    );
-    return () => subscription.unsubscribe();
+      } catch { localStorage.removeItem('sh_coach'); setAppStatus('LOGIN'); }
+    } else {
+      setAppStatus('LOGIN');
+    }
   }, []);
 
   useEffect(() => {
@@ -7890,79 +7887,67 @@ export default function App() {
   // HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (email: string, pin: string) => {
     setLoginError(null);
-    // Local demo mode
     if (!isSupabaseConfigured) {
-      if (email === 'admin@sports.pro' && password === '1234') {
+      if (email === 'admin@sports.pro' && pin === '1234') {
         const coach = { id: 'local-1', email: 'admin@sports.pro', name: 'Coach Local' };
         setCurrentUser(coach);
+        localStorage.setItem('sh_coach', JSON.stringify(coach));
         setAppStatus('TEAM_SELECT');
         fetchCoachData(coach.id);
       } else setLoginError('Modo local: usa admin@sports.pro / 1234');
       return;
     }
-    // Supabase Auth nativo
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase().trim(),
-      password,
+    const { data: rows, error } = await supabase.rpc('verify_coach_login', {
+      p_email: email.toLowerCase().trim(),
+      p_pin: pin,
     });
-    if (error || !data.user) {
+    const data = rows?.[0] ?? null;
+    if (error || !data) {
       setLoginError('Credenciales incorrectas. Verifica tu email y contraseña.');
       return;
     }
-    // Cargar perfil desde coaches usando auth_id
-    const { data: coach, error: profileErr } = await supabase
-      .from('coaches').select('id, name, email')
-      .eq('auth_id', data.user.id).single();
-    if (profileErr || !coach) {
-      setLoginError('Cuenta no encontrada. Contacta con el administrador.');
-      await supabase.auth.signOut();
-      return;
-    }
-    setCurrentUser(coach);
+    setCurrentUser(data);
+    localStorage.setItem('sh_coach', JSON.stringify(data));
     setAppStatus('TEAM_SELECT');
-    fetchCoachData(coach.id);
+    fetchCoachData(data.id);
   };
 
-  const handleRegister = async (email: string, password: string, name: string) => {
+  const handleRegister = async (email: string, pin: string, name: string) => {
     setLoginError(null);
     if (!isSupabaseConfigured) { setLoginError('Modo local: registro no disponible sin Supabase'); return; }
-    // 1. Crear usuario en Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email: email.toLowerCase().trim(),
-      password,
+    const { data: existing } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
+    if (existing) { setLoginError('Este email ya tiene una cuenta registrada.'); return; }
+    const { data: rows2, error } = await supabase.rpc('create_coach', {
+      p_email: email.toLowerCase().trim(), p_name: name, p_pin: pin,
     });
-    if (error || !data.user) { setLoginError('Error al crear la cuenta: ' + error?.message); return; }
-    // 2. Crear perfil en coaches con auth_id
-    const { data: coach, error: profileErr } = await supabase
-      .from('coaches')
-      .insert({ auth_id: data.user.id, email: email.toLowerCase().trim(), name })
-      .select('id, name, email').single();
-    if (profileErr || !coach) { setLoginError('Error al crear el perfil: ' + profileErr?.message); return; }
-    setCurrentUser(coach);
+    const data = rows2?.[0] ?? null;
+    if (error) { setLoginError('Error al crear la cuenta: ' + error.message); return; }
+    setCurrentUser(data);
+    localStorage.setItem('sh_coach', JSON.stringify(data));
     showToast('success', `¡Bienvenido ${name}! Cuenta creada correctamente.`);
     setAppStatus('TEAM_SELECT');
-    fetchCoachData(coach.id);
+    fetchCoachData(data.id);
   };
 
-  const handleForgotPin = async (email: string, _newPin?: string) => {
+  const handleForgotPin = async (email: string, newPin: string) => {
     setLoginError(null);
     if (!isSupabaseConfigured) { setLoginError('Recuperación no disponible en modo local'); return; }
-    // Supabase envía el link de reset por email — no necesitamos nueva contraseña aquí
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email.toLowerCase().trim(),
-      { redirectTo: window.location.origin },
-    );
-    if (error) { setLoginError('Error al enviar el email: ' + error.message); return; }
-    showToast('success', 'Email enviado. Revisa tu bandeja de entrada para resetear la contraseña.');
+    const { data: coach } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
+    if (!coach) { setLoginError('No se encontró ninguna cuenta con ese email.'); return; }
+    const { error } = await supabase.rpc('reset_coach_pin', {
+      p_email: email.toLowerCase().trim(), p_new_pin: newPin,
+    });
+    if (error) { setLoginError('Error al actualizar la contraseña: ' + error.message); return; }
+    showToast('success', 'Contraseña actualizada. Ya puedes iniciar sesión.');
     setLoginError(null);
     setAppStatus('LOGIN');
   };
 
   const handleTeamSelect = (team: Team) => { setActiveTeam(team); setAppStatus('DASHBOARD'); };
   const handleLogout = async () => {
-    if (isSupabaseConfigured) await supabase.auth.signOut();
+    localStorage.removeItem('sh_coach');
     setCurrentUser(null);
     setActiveTeam(null);
     setAppStatus('LOGIN');

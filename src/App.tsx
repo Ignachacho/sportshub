@@ -35,7 +35,7 @@ import {
   Info, CheckCircle, Clock, MapPin, Zap, Target, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
-  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList
+  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList, CalendarDays
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -275,19 +275,18 @@ const LoginView = ({
     if (mode === 'login') {
       onLogin(email, pin);
     } else if (mode === 'register') {
-      if (pin.length < 4) { setLocalErr('La contraseña debe tener al menos 4 caracteres'); return; }
+      if (pin.length < 6) { setLocalErr('La contraseña debe tener al menos 6 caracteres'); return; }
       onRegister(email, pin, name);
     } else {
-      if (newPin.length < 4) { setLocalErr('La contraseña debe tener al menos 4 caracteres'); return; }
-      if (newPin !== confirmPin) { setLocalErr('Las contraseñas no coinciden'); return; }
-      onForgotPin(email, newPin);
+      // forgot — solo email, Supabase envía el link de reset
+      onForgotPin(email);
     }
   };
 
   const titles: Record<Mode, { title: string; sub: string; btn: string }> = {
-    login:    { title: 'Bienvenido',        sub: 'Panel del Entrenador',          btn: 'Iniciar Sesión'        },
-    register: { title: 'Crear Cuenta',      sub: 'Nuevo Entrenador',              btn: 'Registrarse'           },
-    forgot:   { title: 'Recuperar Acceso',  sub: 'Restablece tu contraseña',      btn: 'Actualizar Contraseña' },
+    login:    { title: 'Bienvenido',        sub: 'Panel del Entrenador',              btn: 'Iniciar Sesión'              },
+    register: { title: 'Crear Cuenta',      sub: 'Nuevo Entrenador',                  btn: 'Registrarse'                 },
+    forgot:   { title: 'Recuperar Acceso',  sub: 'Te enviamos un link por email',     btn: 'Enviar Email de Recuperación'},
   };
   const { title, sub, btn } = titles[mode];
   const displayErr = localErr || error;
@@ -385,34 +384,18 @@ const LoginView = ({
                 </div>
               )}
 
-              {/* New PIN — forgot mode */}
+              {/* Forgot mode — solo info, sin campos de nueva contraseña */}
               <AnimatePresence>
                 {mode === 'forgot' && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
-                    className="overflow-hidden space-y-4"
+                    className="overflow-hidden"
                   >
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
-                      <input
-                        type="password" value={newPin} onChange={e => setNewPin(e.target.value)} required
-                        placeholder="Mínimo 4 caracteres"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Confirmar Contraseña</label>
-                      <input
-                        type="password" value={confirmPin} onChange={e => setConfirmPin(e.target.value)} required
-                        placeholder="Repite la contraseña"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder:text-slate-600 focus:border-emerald-500/50 outline-none transition-all"
-                      />
-                    </div>
                     <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5">
                       <Info size={13} className="text-emerald-400 shrink-0 mt-0.5" />
                       <p className="text-emerald-300/90 text-[11px] leading-relaxed">
-                        Si tu email está registrado en el sistema podrás actualizar tu contraseña directamente.
+                        Te enviaremos un link seguro al email indicado. Desde ese link podrás establecer tu nueva contraseña.
                       </p>
                     </div>
                   </motion.div>
@@ -733,6 +716,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',      label: 'Dashboard',        icon: BarChart3 },
   { id: 'roster',         label: 'Plantilla',        icon: Users },
   { id: 'sessions',       label: 'Sesiones',         icon: Timer },
+  { id: 'planning',       label: 'Planificación',    icon: CalendarDays },
   { id: 'matches',        label: 'Partidos',         icon: Trophy },
   { id: 'physical_tests', label: 'Tests Físicos',    icon: Dumbbell },
   { id: 'prepfisica',     label: 'Prep. Física',     icon: Zap },
@@ -847,10 +831,11 @@ const Sidebar = ({
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch h-16">
           {[
-            { id: 'today',    label: 'Hoy',       icon: CheckCircle },
-            { id: 'roster',   label: 'Plantilla', icon: Users },
-            { id: 'sessions', label: 'Sesiones',  icon: Timer },
-            { id: 'health',   label: 'Salud',     icon: HeartPulse },
+            { id: 'today',    label: 'Hoy',          icon: CheckCircle },
+            { id: 'roster',   label: 'Plantilla',    icon: Users },
+            { id: 'sessions', label: 'Sesiones',     icon: Timer },
+            { id: 'planning', label: 'Plan',         icon: CalendarDays },
+            { id: 'health',   label: 'Salud',        icon: HeartPulse },
           ].map(item => (
             <button key={item.id}
               onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
@@ -1075,9 +1060,25 @@ const SessionPlanTool = ({
   ]);
   const [objective, setObjective] = useState('');
 
+  const taskInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const addBlock = () => setBlocks(prev => [...prev, { id: Date.now().toString(), phase: 'Bloque Extra', name: '', duration: 15, players: 'Todos', notes: '', tasks: [''] }]);
   const removeBlock = (id: string) => setBlocks(prev => prev.filter(b => b.id !== id));
   const updateBlock = (id: string, field: keyof DrillBlock, value: any) => setBlocks(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
+
+  const addTaskAfter = (blockId: string, afterIdx: number) => {
+    setBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      const tasks = [...(b.tasks || [])];
+      tasks.splice(afterIdx + 1, 0, '');
+      return { ...b, tasks };
+    }));
+    // Focus el nuevo input tras el render
+    setTimeout(() => {
+      const refKey = `${blockId}-${afterIdx + 1}`;
+      taskInputRefs.current[refKey]?.focus();
+    }, 30);
+  };
   const moveBlock = (id: string, dir: 'up' | 'down') => setBlocks(prev => {
     const idx = prev.findIndex(b => b.id === id);
     if (dir === 'up' && idx === 0) return prev;
@@ -1242,10 +1243,22 @@ const SessionPlanTool = ({
                         </button>
                       </div>
                       <span className="text-[9px] text-slate-700 font-mono w-4 shrink-0">{ti + 1}.</span>
-                      <input value={task}
+                      <input
+                        ref={el => { taskInputRefs.current[`${block.id}-${ti}`] = el; }}
+                        value={task}
                         onChange={e => {
                           const t = [...(block.tasks || [])]; t[ti] = e.target.value;
                           updateBlock(block.id, 'tasks', t);
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { e.preventDefault(); addTaskAfter(block.id, ti); }
+                          if (e.key === 'Backspace' && task === '' && (block.tasks || []).length > 1) {
+                            e.preventDefault();
+                            updateBlock(block.id, 'tasks', (block.tasks || []).filter((_, i) => i !== ti));
+                            // Focus la tarea anterior
+                            const prevKey = `${block.id}-${ti - 1}`;
+                            setTimeout(() => taskInputRefs.current[prevKey]?.focus(), 30);
+                          }
                         }}
                         placeholder="Descripción del ejercicio..."
                         className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/40" />
@@ -2340,7 +2353,8 @@ const SessionsView = ({
                     : sAtt.length > 0 || sLoad.length > 0 ? 'bg-yellow-400' : 'bg-slate-600';
                   return (
                   <div key={s.id}
-                    className={cn('px-2 py-1.5 rounded-lg border text-[9px] font-bold leading-tight transition-all group/chip', tc(s.type).bg, tc(s.type).text, tc(s.type).border)}>
+                    onClick={e => { e.stopPropagation(); setSelectedSessionTab('anotaciones'); setSelectedSession(s); }}
+                    className={cn('px-2 py-1.5 rounded-lg border text-[9px] font-bold leading-tight transition-all group/chip cursor-pointer', tc(s.type).bg, tc(s.type).text, tc(s.type).border)}>
                     <div className="flex items-center gap-1">
                       <div className={cn('w-1.5 h-1.5 rounded-full shrink-0', sDot)} />
                       <div className="truncate flex-1">{s.title || tc(s.type).label}</div>
@@ -2348,7 +2362,7 @@ const SessionsView = ({
                     <div className="opacity-60 mt-0.5">{s.durationMins}′</div>
                     {/* Mini actions on hover */}
                     <div className="flex gap-1 mt-1 opacity-0 group-hover/chip:opacity-100 transition-all">
-                      <button onClick={e => { e.stopPropagation(); setPlanningSession(s); }}
+                      <button onClick={e => { e.stopPropagation(); setSelectedSessionTab('plan'); setSelectedSession(s); }}
                         className="flex-1 bg-slate-900/60 rounded px-1 py-0.5 text-[7px] font-black uppercase hover:text-emerald-400 transition-colors">
                         Plan
                       </button>
@@ -2420,8 +2434,8 @@ const SessionsView = ({
                     <div className="flex flex-col gap-0.5 flex-1">
                       {daySessions.slice(0, 3).map(s => (
                         <div key={s.id}
-                          onClick={e => { e.stopPropagation(); setPlanningSession(s); }}
-                          className={cn('px-1 py-0.5 rounded text-[7px] font-bold truncate border cursor-pointer', tc(s.type).bg.split(' ')[0], tc(s.type).text, tc(s.type).border)}
+                          onClick={e => { e.stopPropagation(); setSelectedSessionTab('anotaciones'); setSelectedSession(s); }}
+                          className={cn('px-1 py-0.5 rounded text-[7px] font-bold truncate border cursor-pointer hover:opacity-80 transition-opacity', tc(s.type).bg.split(' ')[0], tc(s.type).text, tc(s.type).border)}
                           title={s.title || tc(s.type).label}>
                           {s.title || tc(s.type).label}
                         </div>
@@ -6271,6 +6285,294 @@ const PhysicalTestsView = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PLANNING VIEW — Macrociclo anual
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PlanBlock = {
+  id: string;
+  weekKey: string;   // 'YYYY-MM-DD' del lunes de esa semana
+  periodType: SeasonPeriod;
+};
+
+const PlanningView = ({
+  sessions, loadRecords, teamId,
+}: {
+  sessions: Session[];
+  loadRecords: LoadRecord[];
+  teamId?: string;
+}) => {
+  const PLAN_KEY = `ck_plan_${teamId || 'default'}`;
+
+  // Estado del plan (localStorage)
+  const [planBlocks, setPlanBlocks] = useState<PlanBlock[]>(() => {
+    try { const s = localStorage.getItem(PLAN_KEY); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const savePlan = (blocks: PlanBlock[]) => {
+    setPlanBlocks(blocks);
+    localStorage.setItem(PLAN_KEY, JSON.stringify(blocks));
+  };
+
+  // Año visible
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  // Mes de inicio de temporada (0=Ene … 11=Dic)
+  const [startMonth, setStartMonth] = useState(() => {
+    try { const s = localStorage.getItem(`ck_plan_sm_${teamId}`); return s ? parseInt(s) : 8; } catch { return 8; } // Septiembre
+  });
+  const saveStartMonth = (m: number) => {
+    setStartMonth(m);
+    localStorage.setItem(`ck_plan_sm_${teamId}`, String(m));
+  };
+
+  // Popup de edición de semana
+  const [editingWeek, setEditingWeek] = useState<string | null>(null);
+
+  // Construir los 12 meses de la temporada desde startMonth/year
+  const months: { year: number; month: number }[] = Array.from({ length: 12 }, (_, i) => {
+    const m = (startMonth + i) % 12;
+    const y = year + (startMonth + i >= 12 ? 1 : 0);
+    return { year: y, month: m };
+  });
+
+  // Mapa semana→periodo planificado
+  const planMap = new Map<string, SeasonPeriod>(planBlocks.map(b => [b.weekKey, b.periodType]));
+
+  // Carga real por semana (suma de sessionLoad de toda la semana)
+  const loadByWeek = new Map<string, { sessions: number; load: number }>();
+  sessions.forEach(s => {
+    const d = typeof s.date === 'string' ? s.date.split('T')[0] : localDateStr(new Date(s.date));
+    const date = new Date(d + 'T12:00:00');
+    const dow = date.getDay();
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - (dow === 0 ? 6 : dow - 1));
+    const wk = localDateStr(monday);
+    const curr = loadByWeek.get(wk) || { sessions: 0, load: 0 };
+    const weekLoad = loadRecords.filter(l => l.sessionId === s.id).reduce((a, l) => a + (l.sessionLoad || 0), 0);
+    loadByWeek.set(wk, { sessions: curr.sessions + 1, load: curr.load + weekLoad });
+  });
+
+  const toggleBlock = (weekKey: string, type: SeasonPeriod) => {
+    const existing = planBlocks.find(b => b.weekKey === weekKey);
+    if (existing?.periodType === type) {
+      // Quitar el bloque
+      savePlan(planBlocks.filter(b => b.weekKey !== weekKey));
+    } else {
+      const newBlock: PlanBlock = { id: weekKey, weekKey, periodType: type };
+      savePlan([...planBlocks.filter(b => b.weekKey !== weekKey), newBlock]);
+    }
+    setEditingWeek(null);
+  };
+
+  const clearWeek = (weekKey: string) => {
+    savePlan(planBlocks.filter(b => b.weekKey !== weekKey));
+    setEditingWeek(null);
+  };
+
+  // Obtener semanas de un mes (lunes de cada semana que tiene días en ese mes)
+  const getWeeksOfMonth = (year: number, month: number): Date[] => {
+    const first = new Date(year, month, 1);
+    const last  = new Date(year, month + 1, 0);
+    const weeks: Date[] = [];
+    const cur = new Date(first);
+    // Retroceder al lunes anterior si no es lunes
+    const dow = cur.getDay();
+    cur.setDate(cur.getDate() - (dow === 0 ? 6 : dow - 1));
+    while (cur <= last) {
+      weeks.push(new Date(cur));
+      cur.setDate(cur.getDate() + 7);
+    }
+    return weeks;
+  };
+
+  // Stats de resumen por tipo de periodo
+  const summary = Object.entries(PERIOD_CFG).map(([key, cfg]) => {
+    const weeks = planBlocks.filter(b => b.periodType === key as SeasonPeriod).length;
+    const totalLoad = planBlocks
+      .filter(b => b.periodType === key as SeasonPeriod)
+      .reduce((acc, b) => acc + (loadByWeek.get(b.weekKey)?.load || 0), 0);
+    const sessCnt = planBlocks
+      .filter(b => b.periodType === key as SeasonPeriod)
+      .reduce((acc, b) => acc + (loadByWeek.get(b.weekKey)?.sessions || 0), 0);
+    return { key, cfg, weeks, totalLoad, sessCnt };
+  }).filter(s => s.weeks > 0);
+
+  const todayKey = localDateStr(new Date());
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tight">Planificación de Temporada</h2>
+          <p className="text-xs text-slate-500 mt-1 font-mono">Macrociclo anual — haz clic en cualquier semana para asignarle un período</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Mes de inicio */}
+          <div className="flex items-center gap-2">
+            <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Inicio temporada</label>
+            <select value={startMonth} onChange={e => saveStartMonth(parseInt(e.target.value))}
+              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50">
+              {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
+          </div>
+          {/* Año */}
+          <div className="flex items-center gap-1">
+            <button onClick={() => setYear(y => y - 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-all">
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-black text-white px-3">{year}/{year + 1}</span>
+            <button onClick={() => setYear(y => y + 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-all">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          {/* Limpiar */}
+          {planBlocks.length > 0 && (
+            <button onClick={() => { if (confirm('¿Borrar toda la planificación?')) savePlan([]); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-[9px] font-bold uppercase hover:bg-red-500/20 transition-all">
+              <Trash2 size={11} /> Borrar todo
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex flex-wrap gap-3">
+        {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([key, cfg]) => (
+          <div key={key} className={cn('flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-bold', cfg.bg, cfg.color, cfg.border)}>
+            <span>{cfg.emoji}</span><span>{cfg.label}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-800 text-[10px] font-bold text-slate-500 bg-slate-900">
+          Sin asignar
+        </div>
+      </div>
+
+      {/* Resumen de temporada */}
+      {summary.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {summary.map(({ key, cfg, weeks, totalLoad, sessCnt }) => (
+            <div key={key} className={cn('rounded-2xl border p-4', cfg.bg, cfg.border)}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{cfg.emoji}</span>
+                <span className={cn('text-[9px] font-black uppercase tracking-wider', cfg.color)}>{cfg.label}</span>
+              </div>
+              <p className="text-xl font-black text-white">{weeks} sem</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">{sessCnt} sesiones · {Math.round(totalLoad).toLocaleString()} AU total</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Grid de meses */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {months.map(({ year: y, month: m }) => {
+          const monthWeeks = getWeeksOfMonth(y, m);
+          const monthName = new Date(y, m, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+          return (
+            <div key={`${y}-${m}`} className="bg-slate-900 border border-slate-800 rounded-[20px] overflow-hidden">
+              {/* Month header */}
+              <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/40">
+                <p className="text-xs font-black text-white capitalize">{monthName}</p>
+              </div>
+              {/* Week rows */}
+              <div className="p-2 space-y-1">
+                {monthWeeks.map(monday => {
+                  const wk = localDateStr(monday);
+                  const planned = planMap.get(wk);
+                  const cfg = planned ? PERIOD_CFG[planned] : null;
+                  const actual = loadByWeek.get(wk);
+                  const isCurrentWeek = wk <= todayKey && todayKey < localDateStr(new Date(monday.getTime() + 7 * 86400000));
+                  const sunday = new Date(monday.getTime() + 6 * 86400000);
+                  const rangeLabel = `${monday.getDate()}–${sunday.getDate()}`;
+
+                  return (
+                    <div key={wk} className="relative">
+                      <button
+                        onClick={() => setEditingWeek(editingWeek === wk ? null : wk)}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all',
+                          isCurrentWeek ? 'ring-1 ring-emerald-500/50' : '',
+                          cfg
+                            ? cn(cfg.bg, cfg.border)
+                            : 'bg-slate-950 border-slate-800 hover:border-slate-700',
+                        )}>
+                        {/* Semana rango */}
+                        <span className={cn('text-[9px] font-black w-10 shrink-0', cfg ? cfg.color : 'text-slate-500')}>
+                          {rangeLabel}
+                        </span>
+                        {/* Periodo */}
+                        {cfg ? (
+                          <span className={cn('text-[8px] font-black uppercase tracking-wide flex-1 truncate', cfg.color)}>
+                            {cfg.emoji} {cfg.label}
+                          </span>
+                        ) : (
+                          <span className="text-[8px] text-slate-700 flex-1">sin asignar</span>
+                        )}
+                        {/* Carga real */}
+                        {actual && actual.sessions > 0 && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[8px] text-slate-500 font-mono">{actual.sessions}s</span>
+                            {actual.load > 0 && (
+                              <span className="text-[8px] text-slate-600 font-mono">{Math.round(actual.load)} AU</span>
+                            )}
+                          </div>
+                        )}
+                        {/* Semana actual */}
+                        {isCurrentWeek && <span className="text-[7px] font-black text-emerald-400 shrink-0">HOY</span>}
+                      </button>
+
+                      {/* Picker de periodo */}
+                      {editingWeek === wk && (
+                        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl p-2 space-y-1">
+                          {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([pk, pc]) => (
+                            <button key={pk} onClick={() => toggleBlock(wk, pk)}
+                              className={cn(
+                                'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-[10px] font-bold text-left transition-all',
+                                planned === pk ? cn(pc.bg, pc.border, pc.color) : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700',
+                              )}>
+                              <span className="text-sm">{pc.emoji}</span>
+                              <span>{pc.label}</span>
+                              {planned === pk && <span className="ml-auto text-[9px] opacity-60">✓ activo · clic para quitar</span>}
+                            </button>
+                          ))}
+                          {planned && (
+                            <button onClick={() => clearWeek(wk)}
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-800 text-[9px] text-slate-500 hover:text-red-400 hover:border-red-500/30 transition-all font-bold uppercase">
+                              Limpiar semana
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Close picker on outside click */}
+      {editingWeek && (
+        <div className="fixed inset-0 z-20" onClick={() => setEditingWeek(null)} />
+      )}
+
+      {/* Empty state */}
+      {planBlocks.length === 0 && (
+        <div className="py-12 text-center border-2 border-dashed border-slate-800 rounded-[24px]">
+          <Calendar className="mx-auto text-slate-700 mb-3" size={36} />
+          <p className="text-slate-500 text-sm mb-1 font-bold">Tu temporada está en blanco</p>
+          <p className="text-slate-700 text-xs">Haz clic en cualquier semana del calendario para asignarle un período</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PROFILE VIEW  (FIXED: "Configuración" → panel funcional)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -7455,22 +7757,41 @@ export default function App() {
   const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // AUTH INIT
+  // AUTH INIT — Supabase Auth nativo (JWT + refresh automático)
   // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    // Custom coaches-table auth (no supabase.auth needed)
-    const savedCoach = localStorage.getItem('sh_coach');
-    if (savedCoach) {
-      try {
-        const coach = JSON.parse(savedCoach);
+    if (!isSupabaseConfigured) { setAppStatus('LOGIN'); return; }
+
+    const restoreSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { setAppStatus('LOGIN'); return; }
+      const { data: coach } = await supabase
+        .from('coaches').select('id, name, email')
+        .eq('auth_id', session.user.id).single();
+      if (coach) {
         setCurrentUser(coach);
         setAppStatus('TEAM_SELECT');
-        fetchCoachData(coach.id); // pass ID directly — state not set yet
-      } catch { localStorage.removeItem('sh_coach'); setAppStatus('LOGIN'); }
-    } else {
-      setAppStatus('LOGIN');
-    }
+        fetchCoachData(coach.id);
+      } else {
+        setAppStatus('LOGIN');
+      }
+    };
+    restoreSession();
+
+    // Escuchar cambios de auth (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setCurrentUser(null); setActiveTeam(null); setAppStatus('LOGIN');
+        } else if (event === 'PASSWORD_RECOVERY') {
+          // El usuario llegó desde el link de reset — mostrar login para nueva contraseña
+          setAppStatus('LOGIN');
+        }
+        // SIGNED_IN y TOKEN_REFRESHED los gestiona restoreSession al montar
+      }
+    );
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -7569,71 +7890,79 @@ export default function App() {
   // HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleLogin = async (email: string, pin: string) => {
+  const handleLogin = async (email: string, password: string) => {
     setLoginError(null);
     // Local demo mode
     if (!isSupabaseConfigured) {
-      if (email === 'admin@sports.pro' && pin === '1234') {
+      if (email === 'admin@sports.pro' && password === '1234') {
         const coach = { id: 'local-1', email: 'admin@sports.pro', name: 'Coach Local' };
         setCurrentUser(coach);
-        localStorage.setItem('sh_coach', JSON.stringify(coach));
         setAppStatus('TEAM_SELECT');
         fetchCoachData(coach.id);
       } else setLoginError('Modo local: usa admin@sports.pro / 1234');
       return;
     }
-    // Use secure bcrypt-verified RPC function
-    const { data: rows, error } = await supabase.rpc('verify_coach_login', {
-      p_email: email.toLowerCase().trim(),
-      p_pin: pin,
+    // Supabase Auth nativo
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
     });
-    const data = rows?.[0] ?? null;
-    if (error || !data) {
+    if (error || !data.user) {
       setLoginError('Credenciales incorrectas. Verifica tu email y contraseña.');
       return;
     }
-    setCurrentUser(data);
-    localStorage.setItem('sh_coach', JSON.stringify(data));
+    // Cargar perfil desde coaches usando auth_id
+    const { data: coach, error: profileErr } = await supabase
+      .from('coaches').select('id, name, email')
+      .eq('auth_id', data.user.id).single();
+    if (profileErr || !coach) {
+      setLoginError('Cuenta no encontrada. Contacta con el administrador.');
+      await supabase.auth.signOut();
+      return;
+    }
+    setCurrentUser(coach);
     setAppStatus('TEAM_SELECT');
-    fetchCoachData(data.id);
+    fetchCoachData(coach.id);
   };
 
-  const handleRegister = async (email: string, pin: string, name: string) => {
+  const handleRegister = async (email: string, password: string, name: string) => {
     setLoginError(null);
     if (!isSupabaseConfigured) { setLoginError('Modo local: registro no disponible sin Supabase'); return; }
-    // Check email not already taken
-    const { data: existing } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
-    if (existing) { setLoginError('Este email ya tiene una cuenta registrada.'); return; }
-    const { data: rows2, error } = await supabase.rpc('create_coach', {
-      p_email: email.toLowerCase().trim(), p_name: name, p_pin: pin,
+    // 1. Crear usuario en Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
     });
-    const data = rows2?.[0] ?? null;
-    if (error) { setLoginError('Error al crear la cuenta: ' + error.message); return; }
-    setCurrentUser(data);
-    localStorage.setItem('sh_coach', JSON.stringify(data));
+    if (error || !data.user) { setLoginError('Error al crear la cuenta: ' + error?.message); return; }
+    // 2. Crear perfil en coaches con auth_id
+    const { data: coach, error: profileErr } = await supabase
+      .from('coaches')
+      .insert({ auth_id: data.user.id, email: email.toLowerCase().trim(), name })
+      .select('id, name, email').single();
+    if (profileErr || !coach) { setLoginError('Error al crear el perfil: ' + profileErr?.message); return; }
+    setCurrentUser(coach);
     showToast('success', `¡Bienvenido ${name}! Cuenta creada correctamente.`);
     setAppStatus('TEAM_SELECT');
-    fetchCoachData(data.id);
+    fetchCoachData(coach.id);
   };
 
-  const handleForgotPin = async (email: string, newPin: string) => {
+  const handleForgotPin = async (email: string, _newPin?: string) => {
     setLoginError(null);
     if (!isSupabaseConfigured) { setLoginError('Recuperación no disponible en modo local'); return; }
-    const { data: coach } = await supabase.from('coaches').select('id').eq('email', email.toLowerCase().trim()).single();
-    if (!coach) { setLoginError('No se encontró ninguna cuenta con ese email.'); return; }
-    const { error } = await supabase.rpc('reset_coach_pin', {
-      p_email: email.toLowerCase().trim(), p_new_pin: newPin,
-    });
-    if (error) { setLoginError('Error al actualizar la contraseña: ' + error.message); return; }
-    showToast('success', 'Contraseña actualizada. Ya puedes iniciar sesión.');
+    // Supabase envía el link de reset por email — no necesitamos nueva contraseña aquí
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.toLowerCase().trim(),
+      { redirectTo: window.location.origin },
+    );
+    if (error) { setLoginError('Error al enviar el email: ' + error.message); return; }
+    showToast('success', 'Email enviado. Revisa tu bandeja de entrada para resetear la contraseña.');
     setLoginError(null);
-    // Force LoginView back to login mode via a re-render trick
     setAppStatus('LOGIN');
   };
 
   const handleTeamSelect = (team: Team) => { setActiveTeam(team); setAppStatus('DASHBOARD'); };
   const handleLogout = async () => {
-    localStorage.removeItem('sh_coach');
+    if (isSupabaseConfigured) await supabase.auth.signOut();
     setCurrentUser(null);
     setActiveTeam(null);
     setAppStatus('LOGIN');
@@ -8014,6 +8343,9 @@ export default function App() {
           testDefinitions={testDefinitions}
           onAddTestDefinition={handleAddTestDefinition}
           showToast={showToast} />
+      );
+      case 'planning': return (
+        <PlanningView sessions={sessions} loadRecords={loadRecords} teamId={activeTeam?.id} />
       );
       case 'wellness': // fallthrough — Wellness ahora vive dentro de Salud
       case 'health': return (

@@ -7043,8 +7043,14 @@ const PlanningView = ({
     localStorage.setItem(`ck_plan_sm_${teamId}`, String(m));
   };
 
-  // Popup de edición de semana
+  // Popup de edición de semana (modo individual)
   const [editingWeek, setEditingWeek] = useState<string | null>(null);
+
+  // Modo rango: seleccionar varias semanas consecutivas de una vez
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [rangeEnd,   setRangeEnd]   = useState<string | null>(null);
+  const [rangeHover, setRangeHover] = useState<string | null>(null);
 
   // Construir los 12 meses de la temporada desde startMonth/year
   const months: { year: number; month: number }[] = Array.from({ length: 12 }, (_, i) => {
@@ -7052,6 +7058,59 @@ const PlanningView = ({
     const y = year + (startMonth + i >= 12 ? 1 : 0);
     return { year: y, month: m };
   });
+
+  // Obtener semanas de un mes (lunes de cada semana que tiene días en ese mes)
+  const getWeeksOfMonth = (year: number, month: number): Date[] => {
+    const first = new Date(year, month, 1);
+    const last  = new Date(year, month + 1, 0);
+    const weeks: Date[] = [];
+    const cur = new Date(first);
+    const dow = cur.getDay();
+    cur.setDate(cur.getDate() - (dow === 0 ? 6 : dow - 1));
+    while (cur <= last) {
+      weeks.push(new Date(cur));
+      cur.setDate(cur.getDate() + 7);
+    }
+    return weeks;
+  };
+
+  // Todas las semanas de la temporada en orden (para calcular rangos)
+  const allWeekKeys: string[] = [];
+  months.forEach(({ year: y, month: m }) => {
+    getWeeksOfMonth(y, m).forEach(mon => {
+      const k = localDateStr(mon);
+      if (!allWeekKeys.includes(k)) allWeekKeys.push(k);
+    });
+  });
+
+  // Semanas entre dos claves (inclusive, en orden)
+  const weeksBetween = (a: string, b: string): string[] => {
+    const ia = allWeekKeys.indexOf(a);
+    const ib = allWeekKeys.indexOf(b);
+    if (ia < 0 || ib < 0) return [];
+    const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia];
+    return allWeekKeys.slice(lo, hi + 1);
+  };
+
+  // Aplica un tipo de período a un conjunto de semanas
+  const applyRange = (weeks: string[], type: SeasonPeriod) => {
+    const newBlocks = [
+      ...planBlocks.filter(b => !weeks.includes(b.weekKey)),
+      ...weeks.map(wk => ({ id: wk, weekKey: wk, periodType: type } as PlanBlock)),
+    ];
+    savePlan(newBlocks);
+    setRangeStart(null);
+    setRangeEnd(null);
+    setRangeHover(null);
+  };
+
+  // Limpia un rango de semanas
+  const clearRange = (weeks: string[]) => {
+    savePlan(planBlocks.filter(b => !weeks.includes(b.weekKey)));
+    setRangeStart(null);
+    setRangeEnd(null);
+    setRangeHover(null);
+  };
 
   // Mapa semana→periodo planificado
   const planMap = new Map<string, SeasonPeriod>(planBlocks.map(b => [b.weekKey, b.periodType]));
@@ -7073,7 +7132,6 @@ const PlanningView = ({
   const toggleBlock = (weekKey: string, type: SeasonPeriod) => {
     const existing = planBlocks.find(b => b.weekKey === weekKey);
     if (existing?.periodType === type) {
-      // Quitar el bloque
       savePlan(planBlocks.filter(b => b.weekKey !== weekKey));
     } else {
       const newBlock: PlanBlock = { id: weekKey, weekKey, periodType: type };
@@ -7085,22 +7143,6 @@ const PlanningView = ({
   const clearWeek = (weekKey: string) => {
     savePlan(planBlocks.filter(b => b.weekKey !== weekKey));
     setEditingWeek(null);
-  };
-
-  // Obtener semanas de un mes (lunes de cada semana que tiene días en ese mes)
-  const getWeeksOfMonth = (year: number, month: number): Date[] => {
-    const first = new Date(year, month, 1);
-    const last  = new Date(year, month + 1, 0);
-    const weeks: Date[] = [];
-    const cur = new Date(first);
-    // Retroceder al lunes anterior si no es lunes
-    const dow = cur.getDay();
-    cur.setDate(cur.getDate() - (dow === 0 ? 6 : dow - 1));
-    while (cur <= last) {
-      weeks.push(new Date(cur));
-      cur.setDate(cur.getDate() + 7);
-    }
-    return weeks;
   };
 
   // Stats de resumen por tipo de periodo
@@ -7123,9 +7165,30 @@ const PlanningView = ({
       <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tight">Planificación de Temporada</h2>
-          <p className="text-xs text-slate-500 mt-1 font-mono">Macrociclo anual — haz clic en cualquier semana para asignarle un período</p>
+          <p className="text-xs text-slate-500 mt-1 font-mono">
+            {rangeMode
+              ? rangeStart
+                ? '2 · Haz clic en la semana de fin para cerrar el rango'
+                : '1 · Haz clic en la semana de inicio del bloque'
+              : 'Haz clic en cualquier semana para asignarle un período'}
+          </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Toggle modo rango */}
+          <button
+            onClick={() => {
+              setRangeMode(m => !m);
+              setRangeStart(null); setRangeEnd(null); setRangeHover(null); setEditingWeek(null);
+            }}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-wide transition-all',
+              rangeMode
+                ? 'bg-blue-500/15 border-blue-500/40 text-blue-400 shadow-sm shadow-blue-500/20'
+                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600',
+            )}>
+            <span>{rangeMode ? '⬛' : '⬜'}</span>
+            {rangeMode ? 'Modo rango ON' : 'Asignar rango'}
+          </button>
           {/* Mes de inicio */}
           <div className="flex items-center gap-2">
             <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Inicio temporada</label>
@@ -7157,6 +7220,18 @@ const PlanningView = ({
           )}
         </div>
       </div>
+
+      {/* Banner de rango activo */}
+      {rangeMode && rangeStart && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-xs text-blue-300">
+          <span className="text-base">📌</span>
+          <span>Inicio anclado en <strong className="text-white">{rangeStart}</strong> — ahora haz clic en la semana de fin</span>
+          <button onClick={() => { setRangeStart(null); setRangeHover(null); }}
+            className="ml-auto text-blue-500 hover:text-blue-300 font-bold text-[9px] uppercase">
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {/* Leyenda */}
       <div className="flex flex-wrap gap-3">
@@ -7192,7 +7267,7 @@ const PlanningView = ({
           const monthWeeks = getWeeksOfMonth(y, m);
           const monthName = new Date(y, m, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
           return (
-            <div key={`${y}-${m}`} className="bg-slate-900 border border-slate-800 rounded-[20px] overflow-hidden">
+            <div key={`${y}-${m}`} className="bg-slate-900 border border-slate-800 rounded-[20px]">
               {/* Month header */}
               <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/40">
                 <p className="text-xs font-black text-white capitalize">{monthName}</p>
@@ -7208,23 +7283,65 @@ const PlanningView = ({
                   const sunday = new Date(monday.getTime() + 6 * 86400000);
                   const rangeLabel = `${monday.getDate()}–${sunday.getDate()}`;
 
+                  // Estado de rango para highlight
+                  const isRangeAnchor  = rangeStart === wk;
+                  const isRangeEnd     = rangeEnd   === wk;
+                  const previewWeeks   = rangeStart && rangeHover ? weeksBetween(rangeStart, rangeHover) : [];
+                  const isInPreview    = previewWeeks.includes(wk) && !isRangeAnchor;
+                  const confirmedWeeks = rangeStart && rangeEnd ? weeksBetween(rangeStart, rangeEnd) : [];
+                  const isInConfirmed  = confirmedWeeks.includes(wk);
+
+                  const handleWeekClick = () => {
+                    if (!rangeMode) {
+                      setEditingWeek(editingWeek === wk ? null : wk);
+                      return;
+                    }
+                    if (!rangeStart) {
+                      // Primer clic: ancla el inicio
+                      setRangeStart(wk);
+                      setRangeHover(wk);
+                    } else if (rangeEnd) {
+                      // Si el picker ya está abierto, ignorar clics en semanas
+                    } else {
+                      // Segundo clic: abre el picker de rango
+                      setRangeEnd(wk);
+                      setRangeHover(null);
+                    }
+                  };
+
                   return (
                     <div key={wk} className="relative">
                       <button
-                        onClick={() => setEditingWeek(editingWeek === wk ? null : wk)}
+                        onClick={handleWeekClick}
+                        onMouseEnter={() => { if (rangeMode && rangeStart && !rangeEnd) setRangeHover(wk); }}
+                        onMouseLeave={() => { if (rangeMode && !rangeEnd) setRangeHover(rangeStart); }}
                         className={cn(
                           'w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all',
-                          isCurrentWeek ? 'ring-1 ring-emerald-500/50' : '',
-                          cfg
-                            ? cn(cfg.bg, cfg.border)
-                            : 'bg-slate-950 border-slate-800 hover:border-slate-700',
+                          isCurrentWeek && !isRangeAnchor && !isInPreview && !isInConfirmed ? 'ring-1 ring-emerald-500/50' : '',
+                          // Rango: anchor
+                          isRangeAnchor  ? 'bg-blue-500/20 border-blue-500/50 ring-1 ring-blue-500/50' :
+                          // Rango: semanas en rango confirmado (picker abierto)
+                          isInConfirmed  ? 'bg-blue-500/10 border-blue-500/25' :
+                          // Rango: preview hover
+                          isInPreview    ? 'bg-blue-500/8 border-blue-500/20' :
+                          // Normal
+                          cfg            ? cn(cfg.bg, cfg.border)
+                                         : 'bg-slate-950 border-slate-800 hover:border-slate-700',
                         )}>
                         {/* Semana rango */}
-                        <span className={cn('text-[9px] font-black w-10 shrink-0', cfg ? cfg.color : 'text-slate-500')}>
+                        <span className={cn('text-[9px] font-black w-10 shrink-0',
+                          isRangeAnchor || isInPreview || isInConfirmed ? 'text-blue-400' :
+                          cfg ? cfg.color : 'text-slate-500')}>
                           {rangeLabel}
                         </span>
-                        {/* Periodo */}
-                        {cfg ? (
+                        {/* Periodo o estado de rango */}
+                        {isRangeAnchor ? (
+                          <span className="text-[8px] font-black text-blue-400 flex-1">📌 Inicio anclado</span>
+                        ) : isInConfirmed ? (
+                          <span className="text-[8px] font-black text-blue-300 flex-1">← en rango</span>
+                        ) : isInPreview ? (
+                          <span className="text-[8px] text-blue-500/70 flex-1 italic">en rango</span>
+                        ) : cfg ? (
                           <span className={cn('text-[8px] font-black uppercase tracking-wide flex-1 truncate', cfg.color)}>
                             {cfg.emoji} {cfg.label}
                           </span>
@@ -7232,7 +7349,7 @@ const PlanningView = ({
                           <span className="text-[8px] text-slate-700 flex-1">sin asignar</span>
                         )}
                         {/* Carga real */}
-                        {actual && actual.sessions > 0 && (
+                        {actual && actual.sessions > 0 && !isRangeAnchor && !isInPreview && !isInConfirmed && (
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span className="text-[8px] text-slate-500 font-mono">{actual.sessions}s</span>
                             {actual.load > 0 && (
@@ -7241,12 +7358,14 @@ const PlanningView = ({
                           </div>
                         )}
                         {/* Semana actual */}
-                        {isCurrentWeek && <span className="text-[7px] font-black text-emerald-400 shrink-0">HOY</span>}
+                        {isCurrentWeek && !isRangeAnchor && !isInPreview && !isInConfirmed && (
+                          <span className="text-[7px] font-black text-emerald-400 shrink-0">HOY</span>
+                        )}
                       </button>
 
-                      {/* Picker de periodo */}
-                      {editingWeek === wk && (
-                        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl p-2 space-y-1">
+                      {/* Picker individual (modo normal) */}
+                      {!rangeMode && editingWeek === wk && (
+                        <div onClick={e => e.stopPropagation()} className="absolute left-0 right-0 top-full mt-1 z-50 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl p-2 space-y-1">
                           {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([pk, pc]) => (
                             <button key={pk} onClick={() => toggleBlock(wk, pk)}
                               className={cn(
@@ -7266,6 +7385,38 @@ const PlanningView = ({
                           )}
                         </div>
                       )}
+
+                      {/* Picker de rango (se abre en la semana de fin) */}
+                      {rangeMode && rangeEnd === wk && rangeStart && (
+                        <div onClick={e => e.stopPropagation()} className="absolute left-0 right-0 top-full mt-1 z-50 bg-slate-950 border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-500/10 p-3 space-y-2">
+                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                            Asignar {confirmedWeeks.length} semanas
+                          </p>
+                          <div className="space-y-1">
+                            {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([pk, pc]) => (
+                              <button key={pk} onClick={() => applyRange(confirmedWeeks, pk)}
+                                className={cn(
+                                  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-[10px] font-bold text-left transition-all',
+                                  'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white active:scale-95',
+                                )}>
+                                <span className="text-sm">{pc.emoji}</span>
+                                <span>{pc.label}</span>
+                                <span className="ml-auto text-[8px] text-slate-600">{confirmedWeeks.length} sem</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 pt-1 border-t border-slate-800">
+                            <button onClick={() => clearRange(confirmedWeeks)}
+                              className="flex-1 px-3 py-1.5 rounded-xl border border-red-500/20 text-[9px] text-red-400 hover:bg-red-500/10 transition-all font-bold uppercase">
+                              Limpiar rango
+                            </button>
+                            <button onClick={() => { setRangeStart(null); setRangeEnd(null); setRangeHover(null); }}
+                              className="flex-1 px-3 py-1.5 rounded-xl border border-slate-800 text-[9px] text-slate-500 hover:text-slate-300 transition-all font-bold uppercase">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -7276,8 +7427,13 @@ const PlanningView = ({
       </div>
 
       {/* Close picker on outside click */}
-      {editingWeek && (
-        <div className="fixed inset-0 z-20" onClick={() => setEditingWeek(null)} />
+      {(editingWeek || rangeEnd) && (
+        <div className="fixed inset-0 z-40" onClick={() => {
+          setEditingWeek(null);
+          setRangeEnd(null);
+          setRangeStart(null);
+          setRangeHover(null);
+        }} />
       )}
 
       {/* Empty state */}

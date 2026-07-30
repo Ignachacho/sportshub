@@ -7589,6 +7589,7 @@ type PlanBlock = {
   id: string;
   weekKey: string;   // 'YYYY-MM-DD' del lunes de esa semana
   periodType: SeasonPeriod;
+  label?: string;    // nombre personalizado que sobreescribe PERIOD_CFG[periodType].label
 };
 
 const PlanningView = ({
@@ -7624,6 +7625,8 @@ const PlanningView = ({
 
   // Popup de edición de semana (modo individual)
   const [editingWeek, setEditingWeek] = useState<string | null>(null);
+  // Edición de nombre personalizado por semana
+  const [editingLabel, setEditingLabel] = useState<Record<string, string>>({});
 
   // Modo rango: seleccionar varias semanas consecutivas de una vez
   const [rangeMode, setRangeMode] = useState(false);
@@ -7691,8 +7694,8 @@ const PlanningView = ({
     setRangeHover(null);
   };
 
-  // Mapa semana→periodo planificado
-  const planMap = new Map<string, SeasonPeriod>(planBlocks.map(b => [b.weekKey, b.periodType]));
+  // Mapa semana→bloque completo (con label opcional)
+  const planMap = new Map<string, PlanBlock>(planBlocks.map(b => [b.weekKey, b]));
 
   // Carga real por semana (suma de sessionLoad de toda la semana)
   const loadByWeek = new Map<string, { sessions: number; load: number }>();
@@ -7713,10 +7716,18 @@ const PlanningView = ({
     if (existing?.periodType === type) {
       savePlan(planBlocks.filter(b => b.weekKey !== weekKey));
     } else {
-      const newBlock: PlanBlock = { id: weekKey, weekKey, periodType: type };
+      const customLabel = editingLabel[weekKey]?.trim() || existing?.label;
+      const newBlock: PlanBlock = { id: weekKey, weekKey, periodType: type, label: customLabel };
       savePlan([...planBlocks.filter(b => b.weekKey !== weekKey), newBlock]);
     }
     setEditingWeek(null);
+  };
+
+  const saveBlockLabel = (weekKey: string, label: string) => {
+    const existing = planBlocks.find(b => b.weekKey === weekKey);
+    if (!existing) return;
+    const updated = planBlocks.map(b => b.weekKey === weekKey ? { ...b, label: label.trim() || undefined } : b);
+    savePlan(updated);
   };
 
   const clearWeek = (weekKey: string) => {
@@ -7855,8 +7866,9 @@ const PlanningView = ({
               <div className="p-2 space-y-1">
                 {monthWeeks.map(monday => {
                   const wk = localDateStr(monday);
-                  const planned = planMap.get(wk);
-                  const cfg = planned ? PERIOD_CFG[planned] : null;
+                  const planned = planMap.get(wk);      // PlanBlock | undefined
+                  const cfg = planned ? PERIOD_CFG[planned.periodType] : null;
+                  const displayLabel = planned?.label || cfg?.label;
                   const actual = loadByWeek.get(wk);
                   const isCurrentWeek = wk <= todayKey && todayKey < localDateStr(new Date(monday.getTime() + 7 * 86400000));
                   const sunday = new Date(monday.getTime() + 6 * 86400000);
@@ -7922,7 +7934,7 @@ const PlanningView = ({
                           <span className="text-[8px] text-blue-500/70 flex-1 italic">en rango</span>
                         ) : cfg ? (
                           <span className={cn('text-[8px] font-black uppercase tracking-wide flex-1 truncate', cfg.color)}>
-                            {cfg.emoji} {cfg.label}
+                            {cfg.emoji} {displayLabel}
                           </span>
                         ) : (
                           <span className="text-[8px] text-slate-700 flex-1">sin asignar</span>
@@ -7945,15 +7957,45 @@ const PlanningView = ({
                       {/* Picker individual (modo normal) */}
                       {!rangeMode && editingWeek === wk && (
                         <div onClick={e => e.stopPropagation()} className="absolute left-0 right-0 top-full mt-1 z-50 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl p-2 space-y-1">
+                          {/* Nombre personalizado — solo se muestra si hay tipo asignado */}
+                          {planned && (
+                            <div className="px-1 pb-1 border-b border-slate-800 mb-1">
+                              <p className="text-[8px] text-slate-500 uppercase tracking-widest mb-1">Nombre del bloque</p>
+                              <div className="flex gap-1">
+                                <input
+                                  type="text"
+                                  placeholder={cfg?.label ?? 'Nombre personalizado…'}
+                                  value={editingLabel[wk] ?? planned.label ?? ''}
+                                  onChange={e => setEditingLabel(prev => ({ ...prev, [wk]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      saveBlockLabel(wk, editingLabel[wk] ?? '');
+                                      setEditingLabel(prev => { const n = {...prev}; delete n[wk]; return n; });
+                                    }
+                                  }}
+                                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none focus:border-emerald-500 placeholder-slate-600"
+                                />
+                                <button
+                                  onClick={() => {
+                                    saveBlockLabel(wk, editingLabel[wk] ?? '');
+                                    setEditingLabel(prev => { const n = {...prev}; delete n[wk]; return n; });
+                                    setEditingWeek(null);
+                                  }}
+                                  className="px-2 py-1 bg-emerald-500 text-slate-950 rounded-lg text-[9px] font-black hover:bg-emerald-400 transition-all">
+                                  ✓
+                                </button>
+                              </div>
+                            </div>
+                          )}
                           {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([pk, pc]) => (
                             <button key={pk} onClick={() => toggleBlock(wk, pk)}
                               className={cn(
                                 'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-[10px] font-bold text-left transition-all',
-                                planned === pk ? cn(pc.bg, pc.border, pc.color) : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700',
+                                planned?.periodType === pk ? cn(pc.bg, pc.border, pc.color) : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700',
                               )}>
                               <span className="text-sm">{pc.emoji}</span>
                               <span>{pc.label}</span>
-                              {planned === pk && <span className="ml-auto text-[9px] opacity-60">✓ activo · clic para quitar</span>}
+                              {planned?.periodType === pk && <span className="ml-auto text-[9px] opacity-60">✓ activo · clic para quitar</span>}
                             </button>
                           ))}
                           {planned && (
@@ -9687,7 +9729,7 @@ export default function App() {
     if (ms.data) setMatchStats(ms.data.map(mapMatchStat));
     if (att.data) setAttendanceRecords(att.data.map(mapAttendance));
     if (sch.data) setTrainingSchedules(sch.data.map(mapTrainingSchedule));
-    if (pb.data) setPlanBlocks(pb.data.map((b: any) => ({ id: b.id, weekKey: b.week_key, periodType: b.period_type as SeasonPeriod })));
+    if (pb.data) setPlanBlocks(pb.data.map((b: any) => ({ id: b.id, weekKey: b.week_key, periodType: b.period_type as SeasonPeriod, label: b.label ?? undefined })));
     if (ex.data) setExercises(ex.data.map((e: any) => ({
       id: e.id, teamId: e.team_id, coachId: e.coach_id,
       name: e.name, category: e.category as ExerciseCategory,
@@ -9978,15 +10020,27 @@ export default function App() {
 
   // ── TAREA 32: Plan blocks (Supabase) ──────────────────────────────────────
   const handleSavePlan = async (blocks: PlanBlock[]) => {
-    if (!isSupabaseConfigured || !activeTeam) { setPlanBlocks(blocks); return; }
-    // Replace all: delete current + insert new
-    await supabase.from('plan_blocks').delete().eq('team_id', activeTeam.id);
-    if (blocks.length > 0) {
-      await supabase.from('plan_blocks').insert(
-        blocks.map(b => ({ id: b.id === b.weekKey ? undefined : b.id, team_id: activeTeam.id, week_key: b.weekKey, period_type: b.periodType }))
-      );
-    }
+    // Actualizar estado local inmediatamente (optimistic update)
     setPlanBlocks(blocks);
+    if (!isSupabaseConfigured || !activeTeam) return;
+    try {
+      // Replace all: delete current + insert new
+      const { error: delErr } = await supabase.from('plan_blocks').delete().eq('team_id', activeTeam.id);
+      if (delErr) { showToast('error', 'Error borrando planificación'); return; }
+      if (blocks.length > 0) {
+        const { error: insErr } = await supabase.from('plan_blocks').insert(
+          blocks.map(b => ({
+            team_id: activeTeam.id,
+            week_key: b.weekKey,
+            period_type: b.periodType,
+            label: b.label ?? null,
+          }))
+        );
+        if (insErr) showToast('error', `Error guardando planificación: ${insErr.message}`);
+      }
+    } catch (e: any) {
+      showToast('error', 'Error guardando planificación');
+    }
   };
 
   // ── TAREA 33: Exercises (Biblioteca) ──────────────────────────────────────

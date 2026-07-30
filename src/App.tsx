@@ -2559,6 +2559,8 @@ const SessionsView = ({
       initialTab={selectedSessionTab}
       subjects={subjects}
       teamId={teamId}
+      attendanceRecords={attendanceRecords}
+      loadRecords={loadRecords}
       onBack={() => { setSelectedSession(null); setSelectedSessionTab('anotaciones'); }}
       onUpdateSession={onUpdateSession}
       showToast={showToast}
@@ -2814,10 +2816,11 @@ const SessionsView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SessionWorkspaceView = ({
-  session, initialTab, subjects, teamId, onBack, onUpdateSession, showToast
+  session, initialTab, subjects, teamId, attendanceRecords, loadRecords, onBack, onUpdateSession, showToast
 }: {
   session: Session; initialTab: 'anotaciones' | 'plan' | 'lista' | 'material';
   subjects: Subject[]; teamId?: string;
+  attendanceRecords: AttendanceRecord[]; loadRecords: LoadRecord[];
   onBack: () => void;
   onUpdateSession: (id: string, data: Partial<Session>) => Promise<void>;
   showToast: (t: ToastType, m: string) => void;
@@ -2850,11 +2853,18 @@ const SessionWorkspaceView = ({
   const col = stc(session.type);
   const startTime = extractTime(session.date as string);
 
-  const TABS: { id: WTab; label: string }[] = [
-    { id: 'anotaciones', label: '📝 Anotaciones' },
-    { id: 'plan',        label: '📋 Plan' },
-    { id: 'lista',       label: '✓ Lista / RPE' },
-    { id: 'material',    label: '🧰 Material' },
+  // Content indicators — dot on tab if data exists
+  const hasAnnotations = annotations.trim().length > 0;
+  const hasMaterial    = material.trim().length > 0;
+  const hasLista       = attendanceRecords.some(a => a.sessionId === session.id);
+  const hasRpe         = loadRecords.some(l => l.sessionId === session.id && (l.sessionLoad || 0) > 0);
+  const hasPlan        = !!(initZone || initPhase);
+
+  const TABS: { id: WTab; label: string; hasContent: boolean }[] = [
+    { id: 'anotaciones', label: '📝 Anotaciones', hasContent: hasAnnotations },
+    { id: 'plan',        label: '📋 Plan',        hasContent: hasPlan },
+    { id: 'lista',       label: '✓ Lista / RPE',  hasContent: hasLista || hasRpe },
+    { id: 'material',    label: '🧰 Material',     hasContent: hasMaterial },
   ];
 
   return (
@@ -2895,9 +2905,12 @@ const SessionWorkspaceView = ({
       <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 gap-0.5 overflow-x-auto">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={cn('flex-1 px-3 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap',
+            className={cn('relative flex-1 px-3 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap',
               activeTab === t.id ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-slate-800')}>
             {t.label}
+            {t.hasContent && activeTab !== t.id && (
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            )}
           </button>
         ))}
       </div>

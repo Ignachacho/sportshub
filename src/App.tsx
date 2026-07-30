@@ -173,6 +173,14 @@ const acwrColor = (v: number) => {
   return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'RIESGO', bar: '#ef4444' };
 };
 
+// ACWR recomendación en lenguaje de entrenador
+const acwrAdvice = (v: number): string => {
+  if (v < 0.8) return 'Aumentar volumen gradualmente';
+  if (v <= 1.3) return 'Carga óptima — mantener ritmo';
+  if (v <= 1.5) return 'Bajar intensidad próxima sesión';
+  return 'Descanso obligatorio hoy';
+};
+
 // ACWR: Acute (7d) / Chronic (28d) load ratio
 const calculateACWR = (loadRecords: LoadRecord[], sessions: Session[], subjectId: string): number | null => {
   const now = new Date();
@@ -782,26 +790,48 @@ const Sidebar = ({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(item => (
-          <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
-            className={cn(
-              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
-              activeTab === item.id
-                ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
-            )}>
-            <div className="relative">
+      <nav className="flex-1 overflow-y-auto">
+        {/* ── Uso diario ── */}
+        <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Uso diario</p>
+        <div className="space-y-0.5 mb-3">
+          {NAV_ITEMS.filter(i => ['today','dashboard','roster','sessions','planning'].includes(i.id)).map(item => (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
+              className={cn(
+                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
+                activeTab === item.id
+                  ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              )}>
+              <div className="relative">
+                <item.icon size={16} />
+                {item.id === 'today' && notifCount && notifCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] font-black text-white flex items-center justify-center shadow-sm">
+                    {notifCount > 9 ? '9+' : notifCount}
+                  </span>
+                ) : null}
+              </div>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {/* ── Herramientas ── */}
+        <div className="border-t border-slate-800/60 pt-3 mb-1.5">
+          <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Herramientas</p>
+        </div>
+        <div className="space-y-0.5">
+          {NAV_ITEMS.filter(i => ['matches','physical_tests','prepfisica','health','reports','profile'].includes(i.id)).map(item => (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
+              className={cn(
+                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
+                activeTab === item.id
+                  ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              )}>
               <item.icon size={16} />
-              {item.id === 'today' && notifCount && notifCount > 0 ? (
-                <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] font-black text-white flex items-center justify-center shadow-sm">
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              ) : null}
-            </div>
-            {item.label}
-          </button>
-        ))}
+              {item.label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* User + logout */}
@@ -2426,14 +2456,46 @@ const SessionsView = ({
       weeks.push(week);
     }
 
+    // Compute weekly load totals for color coding
+    const weeklyLoads = weeks.map(week => {
+      return week.reduce((total, day) => {
+        const key = localDateStr(day);
+        const daySess = sessionsByDate[key] || [];
+        const sessLoad = daySess.reduce((s, sess) => {
+          return s + loadRecords.filter(l => l.sessionId === sess.id).reduce((a, l) => a + (l.sessionLoad || 0), 0);
+        }, 0);
+        return total + sessLoad;
+      }, 0);
+    });
+    const maxWeekLoad = Math.max(...weeklyLoads, 1);
+
+    // Maps a week load to a CSS color for the left accent bar
+    const weekLoadColor = (load: number) => {
+      if (load === 0) return null;
+      const ratio = load / maxWeekLoad;
+      if (ratio < 0.33) return { bar: 'bg-blue-500/30', label: `${Math.round(load)} AU` };
+      if (ratio < 0.66) return { bar: 'bg-emerald-500/30', label: `${Math.round(load)} AU` };
+      return { bar: 'bg-amber-500/30', label: `${Math.round(load)} AU` };
+    };
+
     return (
       <div>
         <div className="grid grid-cols-7 mb-2">
           {DAY_HEADER.map(d => <div key={d} className="text-center text-[9px] font-bold text-slate-600 uppercase tracking-widest py-2">{d}</div>)}
         </div>
         <div className="space-y-1.5">
-          {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 gap-1.5">
+          {weeks.map((week, wi) => {
+            const wLoad = weeklyLoads[wi];
+            const wColor = weekLoadColor(wLoad);
+            return (
+            <div key={wi} className="relative">
+              {/* Week load accent bar */}
+              {wColor && (
+                <div className="absolute -left-3 top-0 bottom-0 w-1 rounded-full flex flex-col items-center" title={`Carga semana: ${wColor.label}`}>
+                  <div className={cn("w-1 rounded-full flex-1", wColor.bar)} />
+                </div>
+              )}
+            <div className="grid grid-cols-7 gap-1.5">
               {week.map((day, di) => {
                 const key = localDateStr(day);
                 const daySessions = sessionsByDate[key] || [];
@@ -2463,7 +2525,9 @@ const SessionsView = ({
                 );
               })}
             </div>
-          ))}
+            </div>
+          );
+          })}
         </div>
       </div>
     );
@@ -3407,12 +3471,211 @@ const saveDashCfg = (coachId: string, cfg: WidgetCfg[]) =>
   localStorage.setItem(`ck_dash_${coachId}`, JSON.stringify(cfg));
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MOBILE RPE SHEET — flujo express de 3 pasos para registrar RPE post-sesión
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BORG_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: 'Muy suave', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  2: { label: 'Suave',     color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  3: { label: 'Moderado',  color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
+  4: { label: 'Moderado',  color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
+  5: { label: 'Intenso',   color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  6: { label: 'Intenso',   color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  7: { label: 'Duro',      color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+  8: { label: 'Muy duro',  color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+  9: { label: 'Muy duro',  color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  10:{ label: 'Máximo',    color: 'bg-red-600/30 text-red-300 border-red-500/40' },
+};
+
+const MobileRPESheet = ({
+  session, subjects, teamId, onClose, onSaved
+}: {
+  session: Session; subjects: Subject[]; teamId?: string;
+  onClose: () => void; onSaved: () => void;
+}) => {
+  const players = subjects.filter(s => s.role === Role.PLAYER);
+  // Step: 'rpe' → select RPE per player; 'confirm' → review and save
+  const [step, setStep] = useState<'rpe' | 'confirm'>('rpe');
+  const [rpeMap, setRpeMap] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  const currentPlayer = players[currentIdx];
+  const allDone = players.every(p => rpeMap[p.id] !== undefined);
+
+  const handleSave = async () => {
+    if (!isSupabaseConfigured) { onSaved(); onClose(); return; }
+    setSaving(true);
+    try {
+      const inserts = Object.entries(rpeMap).map(([sid, v]) => ({
+        team_id: teamId, session_id: session.id, subject_id: sid,
+        borg_scale: v, duration_mins: session.durationMins || 90,
+        session_load: v * (session.durationMins || 90),
+      }));
+      if (inserts.length) {
+        await supabase.from('load_records').upsert(inserts, { onConflict: 'session_id,subject_id' });
+      }
+      onSaved();
+      onClose();
+    } catch { /* silent */ }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
+      {/* Sheet */}
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
+        className="relative bg-slate-900 border-t border-slate-800 rounded-t-[28px] z-10"
+        style={{ maxHeight: '92vh', overflowY: 'auto' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-800">
+          <div>
+            <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest">RPE Express</p>
+            <h3 className="font-black text-white text-base">{session.title || 'Sesión'}</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">{session.durationMins} min · {new Date(session.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-500 hover:text-white transition-colors"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {step === 'rpe' ? (
+            <>
+              {/* Progress pills */}
+              <div className="flex gap-1 flex-wrap">
+                {players.map((p, i) => (
+                  <button key={p.id}
+                    onClick={() => setCurrentIdx(i)}
+                    className={cn('px-2 py-1 rounded-lg text-[9px] font-bold border transition-all',
+                      i === currentIdx ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                        : rpeMap[p.id] !== undefined ? 'bg-slate-800 text-emerald-400 border-emerald-500/30'
+                        : 'bg-slate-900 text-slate-500 border-slate-800')}>
+                    {p.number ? `#${p.number}` : p.name.split(' ')[0]}
+                    {rpeMap[p.id] !== undefined && <span className="ml-1 text-emerald-400">{rpeMap[p.id]}</span>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Current player */}
+              {currentPlayer && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">Esfuerzo percibido</p>
+                    <p className="text-2xl font-black text-white mt-1">
+                      {currentPlayer.number ? `#${currentPlayer.number} ` : ''}{currentPlayer.name}
+                      {currentPlayer.lastName ? ` ${currentPlayer.lastName}` : ''}
+                    </p>
+                    {rpeMap[currentPlayer.id] !== undefined && (
+                      <p className={cn('text-sm font-bold mt-1', BORG_LABELS[rpeMap[currentPlayer.id]]?.color.split(' ')[1] || 'text-emerald-400')}>
+                        RPE {rpeMap[currentPlayer.id]} — {BORG_LABELS[rpeMap[currentPlayer.id]]?.label}
+                      </p>
+                    )}
+                  </div>
+                  {/* Big RPE buttons */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1,2,3,4,5,6,7,8,9,10].map(v => {
+                      const info = BORG_LABELS[v];
+                      const isSelected = rpeMap[currentPlayer.id] === v;
+                      return (
+                        <button key={v}
+                          onClick={() => {
+                            setRpeMap(prev => ({ ...prev, [currentPlayer.id]: v }));
+                            // Auto advance to next player
+                            if (currentIdx < players.length - 1) {
+                              setTimeout(() => setCurrentIdx(i => i + 1), 180);
+                            }
+                          }}
+                          className={cn('h-14 rounded-2xl text-xl font-black border-2 transition-all active:scale-95',
+                            isSelected ? cn('border-current shadow-lg', info.color)
+                              : 'bg-slate-800 text-white border-slate-700 hover:border-slate-500')}>
+                          {v}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Nav between players */}
+                  <div className="flex gap-2">
+                    <button onClick={() => setCurrentIdx(i => Math.max(0, i-1))} disabled={currentIdx === 0}
+                      className="flex-1 py-3 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white disabled:opacity-30 transition-all flex items-center justify-center gap-1">
+                      <ChevronLeft size={15} /> Anterior
+                    </button>
+                    {currentIdx < players.length - 1 ? (
+                      <button onClick={() => setCurrentIdx(i => i + 1)}
+                        className="flex-1 py-3 bg-slate-800 rounded-xl text-sm font-bold text-white hover:bg-slate-700 transition-all flex items-center justify-center gap-1">
+                        Siguiente <ChevronRight size={15} />
+                      </button>
+                    ) : (
+                      <button onClick={() => setStep('confirm')} disabled={!allDone}
+                        className="flex-1 py-3 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-40 transition-all flex items-center justify-center gap-1">
+                        Revisar <Check size={15} />
+                      </button>
+                    )}
+                  </div>
+                  {allDone && currentIdx < players.length - 1 && (
+                    <button onClick={() => setStep('confirm')} className="w-full py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-bold text-center">
+                      Todos registrados — revisar y guardar →
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            /* Confirm step */
+            <div className="space-y-4">
+              <h4 className="font-black text-white text-base">Resumen RPE</h4>
+              <div className="space-y-2">
+                {players.map(p => {
+                  const rpe = rpeMap[p.id];
+                  const info = rpe !== undefined ? BORG_LABELS[rpe] : null;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between py-2.5 px-4 bg-slate-800 rounded-xl">
+                      <span className="text-sm font-bold text-white">
+                        {p.number ? `#${p.number} ` : ''}{p.name}
+                      </span>
+                      {rpe !== undefined && info ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400">{info.label}</span>
+                          <span className={cn('text-base font-black px-2.5 py-0.5 rounded-lg border', info.color)}>{rpe}</span>
+                        </div>
+                      ) : <span className="text-xs text-slate-600">Sin datos</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="bg-slate-950/60 rounded-xl p-3 text-center">
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Carga media equipo</p>
+                <p className="text-2xl font-black text-white">
+                  {Object.values(rpeMap).length > 0
+                    ? Math.round((Object.values(rpeMap).reduce((a,b)=>a+b,0)/Object.values(rpeMap).length) * (session.durationMins || 90)) + ' AU'
+                    : '—'}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setStep('rpe')} className="px-5 py-3.5 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
+                  ← Editar
+                </button>
+                <button onClick={handleSave} disabled={saving || Object.keys(rpeMap).length === 0}
+                  className="flex-1 py-3.5 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                  {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  Guardar RPE
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TODAY VIEW  — pantalla de entrada: sesión del día, alertas y resumen
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TodayView = ({
   subjects, incidents, matches, sessions, loadRecords, wellnessReports,
-  attendanceRecords, onNavigate, onOpenSession, seasonPeriod, onSetPeriod,
+  attendanceRecords, onNavigate, onOpenSession, seasonPeriod, onSetPeriod, teamId, onRPESaved,
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
   sessions: Session[]; loadRecords: LoadRecord[]; wellnessReports: WellnessReport[];
@@ -3421,11 +3684,14 @@ const TodayView = ({
   onOpenSession: (session: Session) => void;
   seasonPeriod: SeasonPeriod;
   onSetPeriod: (p: SeasonPeriod) => void;
+  teamId?: string;
+  onRPESaved?: () => void;
 }) => {
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
   const players = subjects.filter(s => s.role === Role.PLAYER);
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
+  const [rpeSession, setRpeSession] = useState<Session | null>(null);
 
   // Umbral ACWR dinámico según período de temporada
   const acwrWarnThreshold = PERIOD_CFG[seasonPeriod].acwrWarn;
@@ -3647,11 +3913,18 @@ const TodayView = ({
                       <button onClick={() => onOpenSession(session)} className="text-emerald-500 font-bold hover:underline ml-auto">Editar →</button>
                     </div>
                   ) : (
-                    <button onClick={() => onOpenSession(session)}
-                      className="w-full py-3.5 bg-emerald-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-wide hover:bg-emerald-400 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-                      <Check size={16} />
-                      {status === 'partial' ? 'Completar lista + RPE' : 'Pasar lista + RPE'}
-                    </button>
+                    <div className="flex gap-2">
+                      {/* Express RPE — abre bottom sheet */}
+                      <button onClick={() => setRpeSession(session)}
+                        className="flex-1 py-3.5 bg-emerald-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-wide hover:bg-emerald-400 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                        <Zap size={16} /> RPE Express
+                      </button>
+                      {/* Full session workspace */}
+                      <button onClick={() => onOpenSession(session)}
+                        className="px-4 py-3.5 bg-slate-800 text-white rounded-2xl text-sm font-bold border border-slate-700 hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center gap-1.5">
+                        <ClipboardList size={16} /> Completo
+                      </button>
+                    </div>
                   )}
                 </div>
               );
@@ -3849,6 +4122,19 @@ const TodayView = ({
           </button>
         ))}
       </div>
+
+      {/* Mobile RPE bottom sheet */}
+      <AnimatePresence>
+        {rpeSession && (
+          <MobileRPESheet
+            session={rpeSession}
+            subjects={subjects}
+            teamId={teamId}
+            onClose={() => setRpeSession(null)}
+            onSaved={() => { setRpeSession(null); onRPESaved?.(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -4100,11 +4386,14 @@ const DashboardView = ({
                     </div>
                     <span className="text-[10px] text-slate-600 font-mono">{player.position ? `${player.position} · ` : ''}{load7 > 0 ? `${load7} AU · 7d` : 'Sin carga registrada'}</span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
                     {ac ? (
                       <>
-                        <span className={cn("text-sm font-black tabular-nums", ac.text)}>{acwr!.toFixed(2)}</span>
-                        <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg uppercase border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("text-sm font-black tabular-nums", ac.text)}>{acwr!.toFixed(2)}</span>
+                          <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg uppercase border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
+                        </div>
+                        <span className="text-[9px] text-slate-500">{acwrAdvice(acwr!)}</span>
                       </>
                     ) : <span className="text-[9px] text-slate-600 font-mono">Sin datos (≥28d)</span>}
                   </div>
@@ -4150,8 +4439,12 @@ const DashboardView = ({
                         ) : <span className="text-[9px] text-slate-600 font-mono">Sin datos — necesita 28d</span>}
                       </td>
                       <td className="px-6 py-3 text-center">
-                        {ac ? <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
-                          : <span className="text-[9px] text-slate-700">—</span>}
+                        {ac ? (
+                          <div className="space-y-1">
+                            <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
+                            <p className="text-[8px] text-slate-500">{acwrAdvice(acwr!)}</p>
+                          </div>
+                        ) : <span className="text-[9px] text-slate-700">—</span>}
                       </td>
                     </tr>
                   );
@@ -4977,6 +5270,10 @@ const MatchesView = ({
   const [editingReport, setEditingReport] = useState(false);
   const [reportDraft, setReportDraft] = useState('');
   const [savingReport, setSavingReport] = useState(false);
+  const [editingStats, setEditingStats] = useState(false);
+  const [statsDraft, setStatsDraft] = useState<Record<string, Record<string, string>>>({});
+  const [savingStats, setSavingStats] = useState(false);
+  const STAT_KEYS = ['MIN', 'PTS', 'REB', 'AST', 'TO', 'PF'];
 
   const handleAdd = async () => {
     if (!form.opponent) { showToast('warning', 'Introduce el nombre del rival'); return; }
@@ -5013,7 +5310,6 @@ const MatchesView = ({
       : 'PENDING';
     const resultStyle = result === 'WIN' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : result === 'LOSS' ? 'bg-red-500/15 text-red-400 border-red-500/30' : result === 'DRAW' ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/15 text-blue-400 border-blue-500/30';
     const statsForMatch = matchStats.filter(s => s.matchId === selectedMatch.id);
-    const statsKeys = statsForMatch.length > 0 ? Object.keys(statsForMatch[0].stats) : [];
 
     return (
       <div>
@@ -5081,32 +5377,136 @@ const MatchesView = ({
           </div>
 
           {/* Player stats */}
-          {statsForMatch.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800"><h3 className="font-black text-white">Estadísticas del Partido</h3></div>
+          <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <h3 className="font-black text-white flex items-center gap-2"><Trophy size={15} className="text-amber-400" /> Estadísticas por Jugador</h3>
+              {!editingStats ? (
+                <button
+                  onClick={() => {
+                    // Prefill draft from existing stats
+                    const draft: Record<string, Record<string, string>> = {};
+                    const players = subjects.filter(s => s.role === Role.PLAYER || s.role === undefined);
+                    players.forEach(p => {
+                      const existing = statsForMatch.find(s => s.subjectId === p.id);
+                      draft[p.id] = {};
+                      STAT_KEYS.forEach(k => { draft[p.id][k] = existing ? String(existing.stats[k] ?? '') : ''; });
+                    });
+                    setStatsDraft(draft);
+                    setEditingStats(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 text-[9px] font-bold text-slate-400 hover:text-amber-400 hover:border-amber-500/30 transition-all uppercase">
+                  <Edit2 size={11} /> {statsForMatch.length > 0 ? 'Editar stats' : 'Añadir stats'}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditingStats(false)} className="px-3 py-1.5 rounded-xl border border-slate-700 text-[9px] text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                  <button
+                    onClick={async () => {
+                      setSavingStats(true);
+                      try {
+                        for (const [subjectId, stats] of Object.entries(statsDraft)) {
+                          const hasAny = Object.values(stats).some(v => v !== '');
+                          if (!hasAny) continue;
+                          const parsed: Record<string, number | string> = {};
+                          STAT_KEYS.forEach(k => { if (stats[k] !== '') parsed[k] = isNaN(Number(stats[k])) ? stats[k] : Number(stats[k]); });
+                          await onAddMatchStat({ matchId: selectedMatch.id, subjectId, stats: parsed });
+                        }
+                        showToast('success', 'Estadísticas guardadas');
+                        setEditingStats(false);
+                      } catch { showToast('error', 'Error al guardar estadísticas'); }
+                      finally { setSavingStats(false); }
+                    }}
+                    disabled={savingStats}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 text-[9px] font-black uppercase hover:bg-amber-400 transition-colors flex items-center gap-1.5 disabled:opacity-60">
+                    {savingStats ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />} Guardar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {editingStats ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-950/50 text-[8px] font-bold text-slate-600 uppercase border-b border-slate-800">
+                    <tr>
+                      <th className="px-4 py-3 sticky left-0 bg-slate-950/50">Jugador</th>
+                      {STAT_KEYS.map(k => <th key={k} className="px-3 py-3 text-center min-w-[60px]">{k}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {subjects.filter(s => s.role === Role.PLAYER || !s.role).map(player => (
+                      <tr key={player.id} className="hover:bg-slate-950/20 transition-colors">
+                        <td className="px-4 py-2 font-bold text-sm text-white sticky left-0 bg-slate-900 whitespace-nowrap">
+                          <span className="text-[10px] font-mono text-slate-600 mr-1.5">#{player.number || '—'}</span>
+                          {player.name}
+                        </td>
+                        {STAT_KEYS.map(k => (
+                          <td key={k} className="px-2 py-2 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={statsDraft[player.id]?.[k] ?? ''}
+                              onChange={e => setStatsDraft(prev => ({ ...prev, [player.id]: { ...(prev[player.id] || {}), [k]: e.target.value } }))}
+                              className="w-14 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-center text-xs text-white outline-none focus:border-amber-500/50 [appearance:textfield]"
+                              placeholder="—"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : statsForMatch.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-slate-950/50 text-[8px] font-bold text-slate-600 uppercase border-b border-slate-800">
                     <tr>
                       <th className="px-6 py-3">Jugador</th>
-                      {statsKeys.map(k => <th key={k} className="px-4 py-3 text-center">{k}</th>)}
+                      {STAT_KEYS.map(k => <th key={k} className="px-4 py-3 text-center">{k}</th>)}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {statsForMatch.map(stat => {
-                      const player = subjects.find(s => s.id === stat.subjectId);
-                      return (
-                        <tr key={stat.id} className="hover:bg-slate-950/30 transition-colors">
-                          <td className="px-6 py-3 font-bold text-sm text-white">{player?.name || '—'}</td>
-                          {statsKeys.map(k => <td key={k} className="px-4 py-3 text-center text-[11px] font-mono text-slate-300">{stat.stats[k] ?? '—'}</td>)}
-                        </tr>
-                      );
-                    })}
+                    {statsForMatch
+                      .sort((a, b) => {
+                        const pa = subjects.find(s => s.id === a.subjectId);
+                        const pb = subjects.find(s => s.id === b.subjectId);
+                        return (pa?.name || '').localeCompare(pb?.name || '');
+                      })
+                      .map(stat => {
+                        const player = subjects.find(s => s.id === stat.subjectId);
+                        return (
+                          <tr key={stat.id} className="hover:bg-slate-950/30 transition-colors">
+                            <td className="px-6 py-3 font-bold text-sm text-white">
+                              <span className="text-[10px] font-mono text-slate-600 mr-1.5">#{player?.number || '—'}</span>
+                              {player?.name || '—'}
+                            </td>
+                            {STAT_KEYS.map(k => (
+                              <td key={k} className="px-4 py-3 text-center text-sm font-black text-white font-mono">
+                                {stat.stats[k] !== undefined ? String(stat.stats[k]) : <span className="text-slate-700">—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="py-12 text-center">
+                <Trophy className="mx-auto text-slate-800 mb-3" size={28} />
+                <p className="text-slate-600 text-sm">Sin estadísticas registradas</p>
+                <button onClick={() => {
+                  const draft: Record<string, Record<string, string>> = {};
+                  subjects.forEach(p => { draft[p.id] = {}; STAT_KEYS.forEach(k => { draft[p.id][k] = ''; }); });
+                  setStatsDraft(draft);
+                  setEditingStats(true);
+                }} className="mt-2 text-xs text-amber-400 font-bold hover:underline uppercase">
+                  Añadir estadísticas →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -8292,6 +8692,8 @@ export default function App() {
           onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }}
           seasonPeriod={seasonPeriod}
           onSetPeriod={setSeasonPeriod}
+          teamId={activeTeam?.id}
+          onRPESaved={() => fetchTeamData(activeTeam!.id)}
         />
       );
       case 'dashboard': return (

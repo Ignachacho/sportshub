@@ -151,6 +151,20 @@ const getRiskColor = (score: number) => {
   return { bg: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO' };
 };
 
+// Formatea una fecha JS como 'YYYY-MM-DD' usando la hora LOCAL (evita el desfase UTC+X en calendarios)
+const localDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// ── Períodos de temporada ────────────────────────────────────────────────────
+type SeasonPeriod = 'preseason' | 'regular' | 'playoffs' | 'recovery';
+const PERIOD_CFG: Record<SeasonPeriod, { label: string; emoji: string; color: string; bg: string; border: string; acwrWarn: number; desc: string }> = {
+  preseason: { label: 'Pretemporada', emoji: '🏃', color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    acwrWarn: 1.5, desc: 'Cargas elevadas esperadas. ACWR >1.5 = precaución real.' },
+  regular:   { label: 'Temporada',    emoji: '🏀', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', acwrWarn: 1.3, desc: 'Zona óptima 0.8–1.3. ACWR >1.3 = precaución.' },
+  playoffs:  { label: 'Playoffs',     emoji: '🏆', color: 'text-purple-400',  bg: 'bg-purple-500/10',  border: 'border-purple-500/20',  acwrWarn: 1.3, desc: 'Máxima disponibilidad. Carga conservadora antes de cada partido.' },
+  recovery:  { label: 'Descanso',     emoji: '😴', color: 'text-slate-400',   bg: 'bg-slate-800',      border: 'border-slate-700',      acwrWarn: 0.5, desc: 'Recuperación activa. Sin umbrales de alerta de carga.' },
+};
+const PERIOD_KEY = (coachId: string) => `ck_period_${coachId}`;
+
 // ACWR color utility — usado en Dashboard, HealthView y PlayerDetail
 const acwrColor = (v: number) => {
   if (v < 0.8) return { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'BAJO', bar: '#3b82f6' };
@@ -2283,7 +2297,7 @@ const SessionsView = ({
     return (
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((day, i) => {
-          const key = day.toISOString().split('T')[0];
+          const key = localDateStr(day);
           const daySessions = sessionsByDate[key] || [];
           const isToday = day.toDateString() === today.toDateString();
           const isPast = day < today && !isToday;
@@ -2375,7 +2389,7 @@ const SessionsView = ({
           {weeks.map((week, wi) => (
             <div key={wi} className="grid grid-cols-7 gap-1.5">
               {week.map((day, di) => {
-                const key = day.toISOString().split('T')[0];
+                const key = localDateStr(day);
                 const daySessions = sessionsByDate[key] || [];
                 const isToday = day.toDateString() === today.toDateString();
                 const inMonth = day.getMonth() === month;
@@ -2411,7 +2425,7 @@ const SessionsView = ({
 
   // ── Day view ───────────────────────────────────────────────────────────────
   const renderDayView = () => {
-    const key = currentDate.toISOString().split('T')[0];
+    const key = localDateStr(currentDate);
     const daySessions = (sessionsByDate[key] || []).sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     const isToday = currentDate.toDateString() === today.toDateString();
 
@@ -2542,7 +2556,7 @@ const SessionsView = ({
             className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700 transition-all">
             <Settings size={12} /> Horarios
           </button>
-          <button onClick={() => { setForm({ ...form, date: currentDate.toISOString().split('T')[0] }); setIsAdding(true); }}
+          <button onClick={() => { setForm({ ...form, date: localDateStr(currentDate) }); setIsAdding(true); }}
             className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-emerald-500/20 transition-all">
             <Plus size={12} /> Nueva
           </button>
@@ -3223,17 +3237,24 @@ const saveDashCfg = (coachId: string, cfg: WidgetCfg[]) =>
 
 const TodayView = ({
   subjects, incidents, matches, sessions, loadRecords, wellnessReports,
-  attendanceRecords, onNavigate, onOpenSession,
+  attendanceRecords, onNavigate, onOpenSession, seasonPeriod, onSetPeriod,
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
   sessions: Session[]; loadRecords: LoadRecord[]; wellnessReports: WellnessReport[];
   attendanceRecords: AttendanceRecord[];
   onNavigate: (tab: string) => void;
   onOpenSession: (session: Session) => void;
+  seasonPeriod: SeasonPeriod;
+  onSetPeriod: (p: SeasonPeriod) => void;
 }) => {
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
   const players = subjects.filter(s => s.role === Role.PLAYER);
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false);
+
+  // Umbral ACWR dinámico según período de temporada
+  const acwrWarnThreshold = PERIOD_CFG[seasonPeriod].acwrWarn;
+  const periodCfg = PERIOD_CFG[seasonPeriod];
 
   // Sesión de hoy (puede haber más de una)
   const todaySessions = sessions.filter(s => s.date?.toString().startsWith(today))
@@ -3256,10 +3277,10 @@ const TodayView = ({
   // Lesionados activos
   const activeIncidents = incidents.filter(i => i.status === 'active' || i.status === 'monitoring');
 
-  // Jugadores con ACWR en zona de riesgo o precaución
+  // Jugadores con ACWR en zona de riesgo o precaución (umbral dinámico)
   const acwrAlerts = players
     .map(p => ({ player: p, acwr: calculateACWR(loadRecords, sessions, p.id) }))
-    .filter(({ acwr }) => acwr !== null && acwr > 1.3)
+    .filter(({ acwr }) => acwr !== null && acwr > acwrWarnThreshold)
     .sort((a, b) => (b.acwr || 0) - (a.acwr || 0));
 
   // Próximo partido
@@ -3283,7 +3304,44 @@ const TodayView = ({
     <div className="space-y-5">
       {/* Header saludo */}
       <div className="mb-2">
-        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.3em]">{greeting}</p>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.3em]">{greeting}</p>
+          {/* Chip de período de temporada */}
+          <div className="relative">
+            <button
+              onClick={() => setShowPeriodPicker(v => !v)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                periodCfg.bg, periodCfg.color, periodCfg.border
+              )}
+            >
+              <span>{periodCfg.emoji}</span>
+              <span>{periodCfg.label}</span>
+              <ChevronRight size={8} className={cn("transition-transform", showPeriodPicker && "rotate-90")} />
+            </button>
+            {showPeriodPicker && (
+              <div className="absolute right-0 top-full mt-2 z-50 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden min-w-[220px]">
+                {(Object.entries(PERIOD_CFG) as [SeasonPeriod, typeof PERIOD_CFG[SeasonPeriod]][]).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    onClick={() => { onSetPeriod(key); setShowPeriodPicker(false); }}
+                    className={cn(
+                      "w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-slate-900 transition-colors border-b border-slate-800/60 last:border-0",
+                      key === seasonPeriod && "bg-slate-900"
+                    )}
+                  >
+                    <span className="text-base mt-0.5">{cfg.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-xs font-black", cfg.color)}>{cfg.label}</p>
+                      <p className="text-[9px] text-slate-600 mt-0.5 leading-tight">{cfg.desc}</p>
+                    </div>
+                    {key === seasonPeriod && <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <h2 className="text-2xl font-black text-white capitalize mt-0.5">{dayLabel}</h2>
       </div>
 
@@ -3433,6 +3491,80 @@ const TodayView = ({
             </div>
           </div>
         </button>
+      )}
+
+      {/* BANNER SEMANA DE PARTIDO (tapering) — se activa si hay partido en ≤ 3 días */}
+      {nextMatch && daysToMatch !== null && daysToMatch <= 3 && (
+        <div className="bg-purple-500/8 border border-purple-500/25 rounded-[24px] overflow-hidden">
+          <div className="px-5 py-3 border-b border-purple-500/20 flex items-center gap-2">
+            <Trophy size={14} className="text-purple-400" />
+            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Semana de partido</span>
+            <span className="ml-auto text-[9px] text-purple-500 font-bold">{daysToMatch === 0 ? 'HOY' : daysToMatch === 1 ? 'MAÑANA' : `en ${daysToMatch} días`}</span>
+          </div>
+          <div className="p-5 space-y-3">
+            <p className="text-sm font-black text-white">
+              {nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponent}
+            </p>
+            {/* Tapering guide */}
+            <div className="space-y-2">
+              {daysToMatch === 3 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
+                  <p className="text-xs text-slate-400"><span className="text-white font-bold">D-3:</span> Última sesión de alta intensidad. Carga ≤80% de lo habitual.</p>
+                </div>
+              )}
+              {daysToMatch <= 3 && daysToMatch >= 2 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                  <p className="text-xs text-slate-400"><span className="text-white font-bold">D-2:</span> Activación táctica. Sesión corta (45–60 min), sin contacto fuerte.</p>
+                </div>
+              )}
+              {daysToMatch <= 1 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <p className="text-xs text-slate-400"><span className="text-white font-bold">{daysToMatch === 0 ? 'HOY:' : 'D-1:'}</span> {daysToMatch === 0 ? 'Día de partido. Solo activación ligera o descanso.' : 'Activación neuromuscular. Máx. 30 min. Énfasis mental.'}</p>
+                </div>
+              )}
+            </div>
+            {/* Jugadores en zona de riesgo para el partido */}
+            {(() => {
+              const riskPlayers = players
+                .map(p => ({ p, acwr: calculateACWR(loadRecords, sessions, p.id), injured: activeIncidents.some(i => i.subjectId === p.id) }))
+                .filter(x => x.injured || (x.acwr !== null && x.acwr > acwrWarnThreshold));
+              const availablePlayers = players.filter(p =>
+                !activeIncidents.some(i => i.subjectId === p.id) &&
+                (() => { const a = calculateACWR(loadRecords, sessions, p.id); return a === null || a <= acwrWarnThreshold; })()
+              );
+              return riskPlayers.length > 0 ? (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Disponibilidad estimada</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availablePlayers.slice(0, 8).map(p => (
+                      <span key={p.id} className="text-[9px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                        {p.name} {p.lastName ? p.lastName.split(' ')[0] : ''}
+                      </span>
+                    ))}
+                    {riskPlayers.map(({ p, injured }) => (
+                      <span key={p.id} className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                        injured ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                      )}>
+                        {p.name} {p.lastName ? p.lastName.split(' ')[0] : ''} {injured ? '🤕' : '⚠️'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-center gap-2">
+                  <Check size={12} className="text-emerald-400" />
+                  <p className="text-xs text-emerald-400 font-bold">Toda la plantilla disponible</p>
+                </div>
+              );
+            })()}
+          </div>
+          <div className="px-5 py-2.5 border-t border-purple-500/15">
+            <button onClick={() => onNavigate('matches')} className="text-[10px] text-purple-400 font-bold hover:underline uppercase tracking-wide">Ver partidos →</button>
+          </div>
+        </div>
       )}
 
       {/* ACCESOS RÁPIDOS */}
@@ -3878,16 +4010,17 @@ const DashboardView = ({
 
 const HealthView = ({
   subjects, incidents, wellnessReports, loadRecords, onAddIncident,
-  onUpdateIncident, isAddingIncident, setIsAddingIncident, showToast, sessions, onSaveWellness
+  onUpdateIncident, onDeleteIncident, isAddingIncident, setIsAddingIncident, showToast, sessions, onSaveWellness
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; wellnessReports: WellnessReport[];
   loadRecords: LoadRecord[]; onAddIncident: (i: Partial<HealthIncident>) => Promise<void>;
   onUpdateIncident: (id: string, u: Partial<HealthIncident>) => Promise<void>;
+  onDeleteIncident: (id: string) => Promise<void>;
   isAddingIncident: boolean; setIsAddingIncident: (v: boolean) => void;
   showToast: (t: ToastType, m: string) => void; sessions: Session[];
   onSaveWellness: (w: WellnessReport) => Promise<void>;
 }) => {
-  const [activeTab, setActiveTab] = useState<'scatter' | 'acwr' | 'incidents' | 'wellness'>('incidents');
+  const [activeTab, setActiveTab] = useState<'scatter' | 'acwr' | 'incidents' | 'wellness' | 'positions'>('incidents');
   const [incidentForm, setIncidentForm] = useState({ subjectId: '', type: '', severity: 'medium' as const, date: new Date().toISOString().split('T')[0], notes: '', status: 'active' });
   const [savingIncident, setSavingIncident] = useState(false);
   const players = subjects.filter(s => s.role === Role.PLAYER);
@@ -3955,6 +4088,7 @@ const HealthView = ({
           { id: 'incidents', label: `Lesiones (${activeIncidents.length})` },
           { id: 'acwr', label: 'ACWR' },
           { id: 'wellness', label: 'Estado subjetivo' },
+          { id: 'positions', label: 'Por posición' },
           { id: 'scatter', label: 'Carga × Wellness' },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
@@ -4117,6 +4251,153 @@ const HealthView = ({
         </div>
       )}
 
+      {/* Comparativa por posición */}
+      {activeTab === 'positions' && (() => {
+        // Agrupar jugadores por posición
+        const posGroups = players.reduce<Record<string, Subject[]>>((acc, p) => {
+          const pos = p.position || 'Sin posición';
+          if (!acc[pos]) acc[pos] = [];
+          acc[pos].push(p);
+          return acc;
+        }, {});
+
+        const posStats = Object.entries(posGroups).map(([position, posPlayers]) => {
+          const acwrValues = posPlayers
+            .map(p => calculateACWR(loadRecords, sessions, p.id))
+            .filter(v => v !== null) as number[];
+          const avgAcwr = acwrValues.length ? acwrValues.reduce((a, b) => a + b, 0) / acwrValues.length : null;
+
+          // Carga media 7 días por posición
+          const now = Date.now();
+          let totalLoad7 = 0; let loadCount = 0;
+          posPlayers.forEach(p => {
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(now - i * 86400000).toISOString().split('T')[0];
+              const daySessionIds = new Set(sessions.filter(s => s.date?.toString().startsWith(d)).map(s => s.id));
+              loadRecords.filter(l => l.subjectId === p.id && daySessionIds.has(l.sessionId)).forEach(l => {
+                totalLoad7 += (l.sessionLoad || 0);
+                loadCount++;
+              });
+            }
+          });
+          const avgLoad7 = loadCount > 0 ? Math.round(totalLoad7 / posPlayers.length) : 0;
+
+          // Tendencia 4 semanas (carga semanal)
+          const weeklyLoads = Array.from({ length: 4 }, (_, weekIdx) => {
+            const weekStart = now - (weekIdx + 1) * 7 * 86400000;
+            const weekEnd = now - weekIdx * 7 * 86400000;
+            let wLoad = 0;
+            posPlayers.forEach(p => {
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(weekStart + i * 86400000).toISOString().split('T')[0];
+                const dayIds = new Set(sessions.filter(s => s.date?.toString().startsWith(d)).map(s => s.id));
+                loadRecords.filter(l => l.subjectId === p.id && dayIds.has(l.sessionId)).forEach(l => { wLoad += (l.sessionLoad || 0); });
+              }
+            });
+            return Math.round(wLoad / posPlayers.length);
+          }).reverse();
+
+          const acwrCol = avgAcwr !== null ? acwrColor(avgAcwr) : null;
+          const atRisk = posPlayers.filter(p => {
+            const a = calculateACWR(loadRecords, sessions, p.id);
+            return a !== null && a > 1.3;
+          }).length;
+          const injured = posPlayers.filter(p => incidents.some(i => i.subjectId === p.id && i.status === 'active')).length;
+
+          return { position, players: posPlayers, avgAcwr, avgLoad7, weeklyLoads, acwrCol, atRisk, injured };
+        }).sort((a, b) => (b.avgAcwr || 0) - (a.avgAcwr || 0));
+
+        const maxLoad = Math.max(...posStats.map(s => s.avgLoad7), 1);
+
+        return (
+          <div className="space-y-4">
+            <div className="bg-slate-900/60 border border-slate-700 rounded-2xl px-5 py-3 flex items-start gap-3">
+              <Info size={14} className="text-slate-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                <span className="text-slate-300 font-bold">Carga por posición</span> — Compara carga media 7d y ACWR entre grupos posicionales. Detecta si una línea está sobrecargada respecto a otra.
+              </p>
+            </div>
+            {posStats.length === 0 ? (
+              <div className="py-20 text-center border-2 border-dashed border-slate-900 rounded-[28px]">
+                <p className="text-sm text-slate-600 italic">Asigna posiciones en la ficha de cada jugador para ver esta comparativa.</p>
+              </div>
+            ) : posStats.map(group => (
+              <div key={group.position} className="bg-slate-900 border border-slate-800 rounded-[24px] p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-black text-white text-sm">{group.position}</h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{group.players.length} {group.players.length === 1 ? 'jugador' : 'jugadores'} · {group.atRisk > 0 ? <span className="text-yellow-400 font-bold">{group.atRisk} en alerta</span> : 'sin alertas'}{group.injured > 0 ? ` · ${group.injured} lesionado${group.injured > 1 ? 's' : ''}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {group.injured > 0 && (
+                      <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
+                        🤕 {group.injured}
+                      </span>
+                    )}
+                    {group.acwrCol && group.avgAcwr !== null ? (
+                      <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-full border", group.acwrCol.bg, group.acwrCol.text, group.acwrCol.border)}>
+                        ACWR {group.avgAcwr.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-black px-2.5 py-1 rounded-full bg-slate-800 text-slate-500 border border-slate-700">Sin datos</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barra de carga media 7d */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Carga media 7d</span>
+                    <span className="text-[10px] font-black text-white">{group.avgLoad7} AU</span>
+                  </div>
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-emerald-500/70 transition-all"
+                      style={{ width: `${Math.round((group.avgLoad7 / maxLoad) * 100)}%` }} />
+                  </div>
+                </div>
+
+                {/* Mini sparkline de tendencia 4 semanas */}
+                <div>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Tendencia 4 semanas (carga por jugador)</p>
+                  <div className="flex items-end gap-1 h-12">
+                    {group.weeklyLoads.map((load, i) => {
+                      const maxW = Math.max(...group.weeklyLoads, 1);
+                      const pct = Math.max(Math.round((load / maxW) * 100), 4);
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[7px] text-slate-600">{load > 0 ? load : ''}</span>
+                          <div className="w-full rounded-t-sm transition-all" style={{ height: `${pct}%`, background: i === 3 ? '#10b981' : '#334155' }} />
+                          <span className="text-[7px] text-slate-600">S{i + 1}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Lista de jugadores */}
+                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-800/60">
+                  {group.players.map(p => {
+                    const pAcwr = calculateACWR(loadRecords, sessions, p.id);
+                    const pInjured = incidents.some(i => i.subjectId === p.id && i.status === 'active');
+                    const pCol = pAcwr !== null ? acwrColor(pAcwr) : null;
+                    return (
+                      <span key={p.id} className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                        pInjured ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                        pCol ? `${pCol.bg} ${pCol.text} ${pCol.border}` :
+                        'bg-slate-800 text-slate-500 border-slate-700'
+                      )}>
+                        {p.name} {p.lastName ? p.lastName.split(' ')[0] : ''}{pAcwr !== null ? ` · ${pAcwr.toFixed(1)}` : ''}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Incidents */}
       {activeTab === 'incidents' && (
         <div className="space-y-4">
@@ -4153,6 +4434,11 @@ const HealthView = ({
                         Marcar recuperado →
                       </button>
                     )}
+                    <button
+                      onClick={() => { if (window.confirm('¿Eliminar esta incidencia? Se borrará permanentemente.')) onDeleteIncident(incident.id); }}
+                      className="text-[9px] font-bold text-slate-600 hover:text-red-400 hover:underline uppercase transition-colors">
+                      Eliminar →
+                    </button>
                   </div>
                 </div>
               );
@@ -4980,13 +5266,14 @@ const QualitativeReportsView = ({
 
 const PlayerDetailDashboard = ({
   player, incidents, evaluations, testDefinitions, testResults,
-  onBack, onAddIncident, onAddEvaluation, attendance, wellnessReports,
+  onBack, onAddIncident, onAddEvaluation, onDeleteIncident, attendance, wellnessReports,
   loadRecords, sessions, matches, matchStats, onEditPlayer, currentUser, showToast
 }: {
   player: Subject; incidents: HealthIncident[]; evaluations: QualitativeReport[];
   testDefinitions: TestDefinition[]; testResults: PhysicalTestResult[];
   onBack: () => void; onAddIncident: (i: Partial<HealthIncident>) => Promise<void>;
   onAddEvaluation: (e: QualitativeReport) => Promise<void>;
+  onDeleteIncident: (id: string) => Promise<void>;
   attendance: AttendanceRecord[]; wellnessReports: WellnessReport[];
   loadRecords: LoadRecord[]; sessions: Session[]; matches: Match[]; matchStats: MatchStat[];
   onEditPlayer: (p: Subject) => void; currentUser: any;
@@ -5390,12 +5677,19 @@ const PlayerDetailDashboard = ({
                 <p className="text-xs text-slate-600 font-mono">Sin historial médico registrado</p>
               </div>
             ) : incidents.map(inc => (
-              <div key={inc.id} className={cn("border rounded-xl p-4 flex items-center justify-between", inc.severity === 'high' ? 'bg-red-500/5 border-red-500/20' : 'bg-slate-950 border-slate-800')}>
-                <div>
+              <div key={inc.id} className={cn("border rounded-xl p-4 flex items-center justify-between gap-3", inc.severity === 'high' ? 'bg-red-500/5 border-red-500/20' : 'bg-slate-950 border-slate-800')}>
+                <div className="flex-1 min-w-0">
                   <p className={cn("text-sm font-bold", inc.severity === 'high' ? 'text-red-400' : 'text-white')}>{inc.type}</p>
                   <p className="text-[9px] text-slate-500 font-mono mt-0.5">{inc.date} · {inc.severity} · {inc.notes || 'sin notas'}</p>
                 </div>
-                <span className={cn("text-[8px] font-black px-2 py-1 rounded-lg uppercase border", inc.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{inc.status}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={cn("text-[8px] font-black px-2 py-1 rounded-lg uppercase border", inc.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{inc.status}</span>
+                  <button
+                    onClick={() => { if (window.confirm('¿Eliminar esta incidencia?')) onDeleteIncident(inc.id); }}
+                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Eliminar incidencia">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -6893,6 +7187,19 @@ export default function App() {
   const [showRosterAttendance, setShowRosterAttendance] = useState(false);
   const [todaySessionTarget, setTodaySessionTarget] = useState<Session | null>(null);
 
+  // ── Período de temporada ──
+  const [seasonPeriod, setSeasonPeriodState] = useState<SeasonPeriod>(() => {
+    const user = localStorage.getItem('sh_coach');
+    const coachId = user ? JSON.parse(user)?.id || 'default' : 'default';
+    return (localStorage.getItem(PERIOD_KEY(coachId)) as SeasonPeriod) || 'regular';
+  });
+  const setSeasonPeriod = (p: SeasonPeriod) => {
+    const user = localStorage.getItem('sh_coach');
+    const coachId = user ? JSON.parse(user)?.id || 'default' : 'default';
+    localStorage.setItem(PERIOD_KEY(coachId), p);
+    setSeasonPeriodState(p);
+  };
+
   // ── Data ──
   const [teams, setTeams] = useState<Team[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -7282,6 +7589,18 @@ export default function App() {
     if (activeTeam) await fetchTeamData(activeTeam.id);
   };
 
+  const handleDeleteIncident = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      setIncidents(prev => prev.filter(i => i.id !== id));
+      showToast('success', 'Incidencia eliminada');
+      return;
+    }
+    const { error } = await supabase.from('health_incidents').delete().eq('id', id);
+    if (error) { showToast('error', 'Error al eliminar la incidencia'); return; }
+    setIncidents(prev => prev.filter(i => i.id !== id));
+    showToast('success', 'Incidencia eliminada');
+  };
+
   const handleAddEvaluation = async (evaluation: QualitativeReport) => {
     if (!isSupabaseConfigured) return;
     const { error } = await supabase.from('evaluations').insert([{
@@ -7390,6 +7709,7 @@ export default function App() {
           onBack={() => { setViewingPlayerDetail(false); setSelectedPlayer(null); }}
           onAddIncident={handleAddIncident}
           onAddEvaluation={handleAddEvaluation}
+          onDeleteIncident={handleDeleteIncident}
           onEditPlayer={p => { setViewingPlayerDetail(false); setSelectedPlayer(null); setActiveTab('roster'); setEditingSubject(p); }}
           currentUser={currentUser}
           showToast={showToast}
@@ -7416,6 +7736,8 @@ export default function App() {
           attendanceRecords={attendanceRecords}
           onNavigate={tab => { setActiveTab(tab); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
           onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }}
+          seasonPeriod={seasonPeriod}
+          onSetPeriod={setSeasonPeriod}
         />
       );
       case 'dashboard': return (
@@ -7471,6 +7793,7 @@ export default function App() {
         <HealthView subjects={teamSubjects} incidents={incidents} wellnessReports={wellnessReports}
           loadRecords={loadRecords} sessions={sessions}
           onAddIncident={handleAddIncident} onUpdateIncident={handleUpdateIncident}
+          onDeleteIncident={handleDeleteIncident}
           isAddingIncident={isAddingIncident} setIsAddingIncident={setIsAddingIncident}
           showToast={showToast} onSaveWellness={handleAddWellness} />
       );

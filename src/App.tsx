@@ -4010,6 +4010,7 @@ const DashboardView = ({
     ),
 
     availability: (() => {
+      const parseNum = (n: any) => { if (n === '00') return -0.5; const v = parseInt(String(n)); return isNaN(v) ? 999 : v; };
       const playerACWR = players.map(p => {
         const acwr = calculateACWR(loadRecords, sessions, p.id);
         const load7 = (() => {
@@ -4021,7 +4022,7 @@ const DashboardView = ({
         })();
         const hasIncident = activeIncidents.some(i => i.subjectId === p.id);
         return { player: p, acwr, load7, hasIncident };
-      }).sort((a, b) => (b.acwr || 0) - (a.acwr || 0));
+      }).sort((a, b) => parseNum(a.player.number) - parseNum(b.player.number));
 
       return (
         <div key="availability" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
@@ -4053,7 +4054,7 @@ const DashboardView = ({
                       <span className="text-base font-black text-white truncate">{displayName}</span>
                       {hasIncident && <AlertCircle size={13} className="text-red-400 shrink-0" />}
                     </div>
-                    <span className="text-[10px] text-slate-600 font-mono">{load7 > 0 ? `${load7} AU · 7d` : 'Sin carga registrada'}</span>
+                    <span className="text-[10px] text-slate-600 font-mono">{player.position ? `${player.position} · ` : ''}{load7 > 0 ? `${load7} AU · 7d` : 'Sin carga registrada'}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {ac ? (
@@ -4074,6 +4075,7 @@ const DashboardView = ({
               <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
                 <tr>
                   <th className="px-6 py-3">#</th><th className="px-6 py-3">Jugador</th>
+                  <th className="px-6 py-3 hidden lg:table-cell">Posición</th>
                   <th className="px-6 py-3 text-center">Carga 7d (AU)</th>
                   <th className="px-6 py-3 text-center">ACWR</th>
                   <th className="px-6 py-3 text-center">Estado</th>
@@ -4091,6 +4093,7 @@ const DashboardView = ({
                         </span>
                       </td>
                       <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{displayName}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
+                      <td className="px-6 py-3 hidden lg:table-cell text-xs text-slate-400">{player.position || '—'}</td>
                       <td className="px-6 py-3 text-center text-[10px] text-slate-400 font-mono">{load7 > 0 ? `${load7} AU` : '—'}</td>
                       <td className="px-6 py-3 text-center">
                         {acwr !== null ? (
@@ -7528,7 +7531,8 @@ export default function App() {
       supabase.from('health_incidents').select('*').eq('team_id', teamId),
       supabase.from('evaluations').select('*').eq('team_id', teamId),
       supabase.from('wellness_reports').select('*').eq('team_id', teamId),
-      supabase.from('load_records').select('*').eq('team_id', teamId),
+      supabase.from('load_records').select('*').eq('team_id', teamId)
+        .gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString()),
       supabase.from('matches').select('*').eq('team_id', teamId).order('date', { ascending: true }),
       supabase.from('sessions').select('*').eq('team_id', teamId).order('date', { ascending: true }),
       supabase.from('test_definitions').select('*').eq('team_id', teamId),

@@ -43,7 +43,7 @@ export interface AttendanceRecord {
   eventId?: string;
   sessionId?: string;
   subjectId: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
+  status: 'present' | 'absent' | 'late' | 'excused' | 'adapted';
 }
 
 export interface HealthIncident {

@@ -2357,7 +2357,7 @@ const SessionsView = ({
   trainingSchedules, onAddSchedule, onDeleteSchedule, onUpdateSchedule, onGenerateSessions,
   onDeleteSessionWithScope, onUpdateSessionWithScope,
   sessionPlans, onSaveSessionPlan,
-  initialSession, onSessionOpened,
+  initialSession, onSessionOpened, onDataSaved,
 }: {
   sessions: Session[];
   onAddSession: (s: Partial<Session>) => Promise<void>;
@@ -2382,6 +2382,7 @@ const SessionsView = ({
   onSaveSessionPlan: (sessionId: string, blocks: DrillBlock[], objective: string) => Promise<void>;
   initialSession?: Session | null;
   onSessionOpened?: () => void;
+  onDataSaved?: () => void;
 }) => {
   type ViewMode = 'week' | 'month' | 'day';
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -2795,6 +2796,7 @@ const SessionsView = ({
       sessionPlan={sessionPlans[selectedSession.id]}
       onSaveSessionPlan={onSaveSessionPlan}
       showToast={showToast}
+      onDataSaved={onDataSaved}
     />
   );
 
@@ -3078,7 +3080,7 @@ const SessionsView = ({
 
 const SessionWorkspaceView = ({
   session, initialTab, subjects, teamId, attendanceRecords, loadRecords, onBack, onUpdateSession,
-  sessionPlan, onSaveSessionPlan, showToast
+  sessionPlan, onSaveSessionPlan, showToast, onDataSaved
 }: {
   session: Session; initialTab: 'anotaciones' | 'plan' | 'lista' | 'material';
   subjects: Subject[]; teamId?: string;
@@ -3088,6 +3090,7 @@ const SessionWorkspaceView = ({
   sessionPlan?: { objective: string; blocks: DrillBlock[] };
   onSaveSessionPlan: (sessionId: string, blocks: DrillBlock[], objective: string) => Promise<void>;
   showToast: (t: ToastType, m: string) => void;
+  onDataSaved?: () => void;
 }) => {
   type WTab = 'anotaciones' | 'plan' | 'lista' | 'material';
   const [activeTab, setActiveTab] = useState<WTab>(initialTab);
@@ -3324,7 +3327,7 @@ const SessionWorkspaceView = ({
           )}
 
           {activeTab === 'lista' && (
-            <SessionDetailTool session={session} subjects={subjects} onBack={() => setActiveTab('anotaciones')} teamId={teamId} showToast={showToast} />
+            <SessionDetailTool session={session} subjects={subjects} onBack={() => setActiveTab('anotaciones')} onDataSaved={onDataSaved} teamId={teamId} showToast={showToast} />
           )}
 
           {activeTab === 'material' && (
@@ -3391,9 +3394,9 @@ const SessionWorkspaceView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SessionDetailTool = ({
-  session, subjects, onBack, teamId, showToast
+  session, subjects, onBack, onDataSaved, teamId, showToast
 }: {
-  session: Session; subjects: Subject[]; onBack: () => void; teamId?: string; showToast: (t: ToastType, m: string) => void;
+  session: Session; subjects: Subject[]; onBack: () => void; onDataSaved?: () => void; teamId?: string; showToast: (t: ToastType, m: string) => void;
 }) => {
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [borgScale, setBorgScale] = useState<Record<string, number>>({});
@@ -3432,19 +3435,27 @@ const SessionDetailTool = ({
 
       showToast('success', hasExisting ? 'Sesión actualizada correctamente' : 'Asistencia y carga registradas');
       onBack();
+      onDataSaved?.();
     } catch (err: any) { showToast('error', 'Error al guardar: ' + err.message); }
     finally { setSaving(false); }
   };
 
   const players = subjects.filter(s => s.role === Role.PLAYER);
-  const presentCount = Object.values(attendance).filter(s => s === 'present').length;
-  const teamAvgBorg = Object.values(borgScale).length ? (Object.values(borgScale).reduce((a, b) => a + b, 0) / Object.values(borgScale).length).toFixed(1) : '—';
+  const presentCount = Object.values(attendance).filter(s => s === 'present' || s === 'late').length;
+  // Solo contar RPE de jugadores presentes o tarde (excluir ausentes y adaptados del promedio de equipo)
+  const presentBorgs = Object.entries(borgScale)
+    .filter(([sid]) => attendance[sid] === 'present' || attendance[sid] === 'late')
+    .map(([, v]) => v);
+  const teamAvgBorg = presentBorgs.length
+    ? (presentBorgs.reduce((a, b) => a + b, 0) / presentBorgs.length).toFixed(1)
+    : '—';
 
   const statusLabels = [
     { key: 'present', label: 'P', full: 'Presente', color: 'bg-emerald-500 text-white border-emerald-500' },
     { key: 'absent', label: 'A', full: 'Ausente', color: 'bg-red-500 text-white border-red-500' },
     { key: 'late', label: 'T', full: 'Tarde', color: 'bg-yellow-500 text-slate-950 border-yellow-500' },
     { key: 'excused', label: 'J', full: 'Justificado', color: 'bg-blue-500 text-white border-blue-500' },
+    { key: 'adapted', label: 'Ad', full: 'Adaptado', color: 'bg-purple-500 text-white border-purple-500' },
   ];
 
   const getBorgLabel = (v: number) => {
@@ -4030,27 +4041,40 @@ const MobileRPESheet = ({
   // Step: 'rpe' → select RPE per player; 'confirm' → review and save
   const [step, setStep] = useState<'rpe' | 'confirm'>('rpe');
   const [rpeMap, setRpeMap] = useState<Record<string, number>>({});
+  // Asistencia por jugador: P / T / J / Ad / Ab (default: 'present' para todos)
+  const [attMap, setAttMap] = useState<Record<string, string>>(
+    () => Object.fromEntries(players.map(p => [p.id, 'present']))
+  );
   const [saving, setSaving] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isEditing, setIsEditing] = useState(false); // true cuando el user vuelve del paso confirm a revisar
 
   const currentPlayer = players[currentIdx];
-  const allDone = players.every(p => rpeMap[p.id] !== undefined);
+  const allDone = players.every(p => rpeMap[p.id] !== undefined || attMap[p.id] === 'absent' || attMap[p.id] === 'excused');
+
+  const ATT_LABELS = [
+    { key: 'present', label: 'P', full: 'Presente',   color: 'bg-emerald-500 text-white border-emerald-500' },
+    { key: 'late',    label: 'T', full: 'Tarde',       color: 'bg-yellow-500 text-slate-950 border-yellow-500' },
+    { key: 'excused', label: 'J', full: 'Justificado', color: 'bg-blue-500 text-white border-blue-500' },
+    { key: 'adapted', label: 'Ad', full: 'Adaptado',   color: 'bg-purple-500 text-white border-purple-500' },
+    { key: 'absent',  label: 'Ab', full: 'Ausente',    color: 'bg-red-500 text-white border-red-500' },
+  ];
 
   const handleSave = async () => {
     if (!isSupabaseConfigured) { onSaved(); onClose(); return; }
     setSaving(true);
     try {
-      const entries = Object.entries(rpeMap);
-      // RPE (carga)
-      const loadInserts = entries.map(([sid, v]) => ({
+      // RPE: solo jugadores con valor registrado
+      const loadInserts = Object.entries(rpeMap).map(([sid, v]) => ({
         team_id: teamId, session_id: session.id, subject_id: sid,
         borg_scale: v, duration_mins: session.durationMins || 90,
         session_load: v * (session.durationMins || 90),
       }));
-      // Asistencia: todos los jugadores con RPE → present
-      const attInserts = entries.map(([sid]) => ({
-        team_id: teamId, session_id: session.id, subject_id: sid, status: 'present',
+      // Asistencia: todos los jugadores con su estado explícito
+      // Si tiene RPE y no se cambió el estado → 'present'; si no tiene RPE y no se cambió → 'absent'
+      const attInserts = players.map(p => ({
+        team_id: teamId, session_id: session.id, subject_id: p.id,
+        status: attMap[p.id] ?? (rpeMap[p.id] !== undefined ? 'present' : 'absent'),
       }));
       await Promise.all([
         loadInserts.length ? supabase.from('load_records').upsert(loadInserts, { onConflict: 'session_id,subject_id' }) : Promise.resolve(),
@@ -4113,7 +4137,28 @@ const MobileRPESheet = ({
                       </p>
                     )}
                   </div>
-                  {/* Big RPE buttons */}
+                  {/* Asistencia mini-toggle */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {ATT_LABELS.map(s => (
+                      <button key={s.key}
+                        onClick={() => {
+                          setAttMap(prev => ({ ...prev, [currentPlayer.id]: s.key }));
+                          // Si se marca Ausente o Justificado, limpiar su RPE
+                          if (s.key === 'absent' || s.key === 'excused') {
+                            setRpeMap(prev => { const next = { ...prev }; delete next[currentPlayer.id]; return next; });
+                          }
+                        }}
+                        className={cn('px-2.5 py-1 rounded-lg text-[9px] font-black border transition-all',
+                          attMap[currentPlayer.id] === s.key
+                            ? cn(s.color, 'border-current shadow-sm')
+                            : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600')}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Big RPE buttons — ocultos si ausente/justificado */}
+                  {attMap[currentPlayer.id] !== 'absent' && attMap[currentPlayer.id] !== 'excused' && (
                   <div className="grid grid-cols-5 gap-2">
                     {[1,2,3,4,5,6,7,8,9,10].map(v => {
                       const info = BORG_LABELS[v];
@@ -4141,6 +4186,7 @@ const MobileRPESheet = ({
                       );
                     })}
                   </div>
+                  )}
                   {/* Nav between players */}
                   <div className="flex gap-2">
                     <button onClick={() => setCurrentIdx(i => Math.max(0, i-1))} disabled={currentIdx === 0}
@@ -4172,45 +4218,58 @@ const MobileRPESheet = ({
             <div className="space-y-4">
               <div>
                 <h4 className="font-black text-white text-base">Resumen RPE</h4>
-                <p className="text-[10px] text-emerald-400 mt-0.5">✓ Lista de asistencia incluida automáticamente</p>
+                <p className="text-[10px] text-emerald-400 mt-0.5">✓ Lista de asistencia incluida</p>
               </div>
               <div className="space-y-2">
                 {players.map(p => {
                   const rpe = rpeMap[p.id];
                   const info = rpe !== undefined ? BORG_LABELS[rpe] : null;
+                  const attStatus = attMap[p.id] ?? 'present';
+                  const attInfo = ATT_LABELS.find(a => a.key === attStatus);
+                  const isAbsent = attStatus === 'absent' || attStatus === 'excused';
+                  const isAdapted = attStatus === 'adapted';
                   return (
-                    <div key={p.id} className="flex items-center justify-between py-2.5 px-4 bg-slate-800 rounded-xl">
+                    <div key={p.id} className={cn("flex items-center justify-between py-2.5 px-4 rounded-xl", isAbsent ? 'bg-slate-900 opacity-60' : 'bg-slate-800')}>
                       <div className="flex items-center gap-2">
-                        {rpe !== undefined
-                          ? <span className="text-emerald-400 text-[10px]">✓</span>
-                          : <span className="text-slate-600 text-[10px]">○</span>}
+                        <span className={cn('text-[9px] font-black px-1.5 py-0.5 rounded border', attInfo?.color ?? 'bg-slate-700 text-slate-400 border-slate-600')}>
+                          {attInfo?.label ?? 'P'}
+                        </span>
                         <span className="text-sm font-bold text-white">
                           {p.number ? `#${p.number} ` : ''}{p.name}
                         </span>
+                        {isAdapted && <span className="text-[8px] text-purple-400 font-bold uppercase">· No computa</span>}
                       </div>
-                      {rpe !== undefined && info ? (
+                      {!isAbsent && rpe !== undefined && info ? (
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-slate-400">{info.label}</span>
                           <span className={cn('text-base font-black px-2.5 py-0.5 rounded-lg border', info.color)}>{rpe}</span>
                         </div>
-                      ) : <span className="text-xs text-slate-600">Sin datos</span>}
+                      ) : isAbsent ? (
+                        <span className="text-xs text-slate-600">{attInfo?.full}</span>
+                      ) : <span className="text-xs text-slate-600">Sin RPE</span>}
                     </div>
                   );
                 })}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-950/60 rounded-xl p-3 text-center">
-                  <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Carga media</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Carga media (grupo)</p>
                   <p className="text-xl font-black text-white">
-                    {Object.values(rpeMap).length > 0
-                      ? Math.round((Object.values(rpeMap).reduce((a,b)=>a+b,0)/Object.values(rpeMap).length) * (session.durationMins || 90)) + ' AU'
-                      : '—'}
+                    {(() => {
+                      // Excluir adaptados del promedio de grupo
+                      const groupRpes = Object.entries(rpeMap)
+                        .filter(([sid]) => attMap[sid] !== 'adapted' && attMap[sid] !== 'absent' && attMap[sid] !== 'excused')
+                        .map(([, v]) => v);
+                      return groupRpes.length > 0
+                        ? Math.round((groupRpes.reduce((a,b)=>a+b,0)/groupRpes.length) * (session.durationMins || 90)) + ' AU'
+                        : '—';
+                    })()}
                   </p>
                 </div>
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
                   <p className="text-[9px] text-emerald-500 uppercase tracking-widest mb-0.5">Presentes</p>
                   <p className="text-xl font-black text-emerald-400">
-                    {Object.keys(rpeMap).length}/{players.length}
+                    {players.filter(p => attMap[p.id] !== 'absent' && attMap[p.id] !== 'excused').length}/{players.length}
                   </p>
                 </div>
               </div>
@@ -4218,7 +4277,7 @@ const MobileRPESheet = ({
                 <button onClick={() => { setStep('rpe'); setIsEditing(true); }} className="px-5 py-3.5 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
                   ← Editar
                 </button>
-                <button onClick={handleSave} disabled={saving || Object.keys(rpeMap).length === 0}
+                <button onClick={handleSave} disabled={saving}
                   className="flex-1 py-3.5 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
                   {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                   {saving ? 'Guardando...' : 'Guardar RPE + Lista'}
@@ -4707,11 +4766,11 @@ const TodayView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DashboardView = ({
-  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, coachId, onOpenSession
+  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, attendanceRecords, coachId, onOpenSession
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
   wellnessReports: WellnessReport[]; sessions: Session[];
-  onNavigate: (tab: string) => void; loadRecords: LoadRecord[]; coachId?: string;
+  onNavigate: (tab: string) => void; loadRecords: LoadRecord[]; attendanceRecords: AttendanceRecord[]; coachId?: string;
   onOpenSession: (s: Session) => void;
 }) => {
   const [cfgOpen, setCfgOpen] = useState(false);
@@ -4748,7 +4807,12 @@ const DashboardView = ({
     const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0];
     const daySessions = sessions.filter(s => s.date?.toString().startsWith(d));
     const dayIds = new Set(daySessions.map(s => s.id));
-    const dayRecords = loadRecords.filter(l => dayIds.has(l.sessionId) && (l.sessionLoad || 0) > 0);
+    // Excluir jugadores con asistencia 'adapted' de los promedios de grupo
+    const dayRecords = loadRecords.filter(l => {
+      if (!dayIds.has(l.sessionId) || (l.sessionLoad || 0) === 0) return false;
+      const att = attendanceRecords.find(a => a.sessionId === l.sessionId && a.subjectId === l.subjectId);
+      return !att || att.status !== 'adapted';
+    });
     const dayLoad = dayRecords.reduce((acc, l) => acc + (l.sessionLoad || 0), 0);
     // Dividir entre jugadores que realmente tienen registro ese día (no entre toda la plantilla)
     const uniquePlayersWithLoad = new Set(dayRecords.map(l => l.subjectId)).size;
@@ -4788,7 +4852,10 @@ const DashboardView = ({
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
     const recent = loadRecords.filter(l => {
       const sess = sessions.find(s => s.id === l.sessionId);
-      return sess && sess.date >= weekAgo;
+      if (!sess || sess.date < weekAgo) return false;
+      // Excluir sesiones adaptadas de los promedios de grupo
+      const att = attendanceRecords.find(a => a.sessionId === l.sessionId && a.subjectId === l.subjectId);
+      return !att || att.status !== 'adapted';
     });
     if (!recent.length) return null;
     return Math.round(recent.reduce((a, l) => a + (l.sessionLoad || 0), 0) / recent.length);
@@ -10239,6 +10306,25 @@ export default function App() {
     if (Object.keys(update).length === 0) return;
     const { error } = await supabase.from('sessions').update(update).eq('id', id);
     if (error) throw error;
+    // Si cambió la duración, recalcular session_load en todos los load_records de esta sesión
+    if (data.durationMins !== undefined) {
+      const newDuration = data.durationMins;
+      const { data: existingLoads } = await supabase
+        .from('load_records').select('id, borg_scale').eq('session_id', id);
+      if (existingLoads?.length) {
+        const loadUpdates = existingLoads.map((r: any) => ({
+          id: r.id,
+          duration_mins: newDuration,
+          session_load: r.borg_scale * newDuration,
+        }));
+        await supabase.from('load_records').upsert(loadUpdates);
+        setLoadRecords(prev => prev.map(l =>
+          l.sessionId === id
+            ? { ...l, durationMins: newDuration, sessionLoad: l.borgScale * newDuration }
+            : l
+        ));
+      }
+    }
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
   };
 
@@ -10582,7 +10668,7 @@ export default function App() {
       );
       case 'dashboard': return (
         <DashboardView subjects={teamSubjects} incidents={incidents} matches={matches}
-          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} coachId={currentUser?.id}
+          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} attendanceRecords={attendanceRecords} coachId={currentUser?.id}
           onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }} />
       );
       case 'agenda': return (
@@ -10613,7 +10699,8 @@ export default function App() {
           sessionPlans={sessionPlans}
           onSaveSessionPlan={handleSaveSessionPlan}
           initialSession={todaySessionTarget}
-          onSessionOpened={() => setTodaySessionTarget(null)} />
+          onSessionOpened={() => setTodaySessionTarget(null)}
+          onDataSaved={() => { if (activeTeam) fetchTeamData(activeTeam.id); }} />
       );
       case 'asistencia': return (
         <AttendanceView

@@ -151,6 +151,14 @@ const getRiskColor = (score: number) => {
   return { bg: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO' };
 };
 
+// ACWR color utility — usado en Dashboard, HealthView y PlayerDetail
+const acwrColor = (v: number) => {
+  if (v < 0.8) return { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'BAJO', bar: '#3b82f6' };
+  if (v <= 1.3) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO', bar: '#10b981' };
+  if (v <= 1.5) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30', label: 'PRECAUCIÓN', bar: '#eab308' };
+  return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'RIESGO', bar: '#ef4444' };
+};
+
 // ACWR: Acute (7d) / Chronic (28d) load ratio
 const calculateACWR = (loadRecords: LoadRecord[], sessions: Session[], subjectId: string): number | null => {
   const now = new Date();
@@ -195,7 +203,7 @@ const ToastContainer = ({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
     info: 'bg-slate-900 border-blue-500/40 text-blue-300',
   };
   return (
-    <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-[300] flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map(t => {
           const Icon = iconMap[t.type];
@@ -715,7 +723,6 @@ const NAV_ITEMS = [
   { id: 'physical_tests', label: 'Tests Físicos',    icon: Dumbbell },
   { id: 'prepfisica',     label: 'Prep. Física',     icon: Zap },
   { id: 'health',         label: 'Salud',            icon: HeartPulse },
-  { id: 'wellness',       label: 'Wellness',         icon: Activity },
   { id: 'reports',        label: 'Informes IA',      icon: BrainCircuit },
   { id: 'profile',        label: 'Perfil',           icon: User },
 ];
@@ -2147,6 +2154,7 @@ const SessionsView = ({
   const [editForm, setEditForm] = useState({ title: '', date: '', startTime: '', type: 'TRAINING', notes: '', durationMins: 90, zone: '', phase: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   // Si viene de la vista Hoy con una sesión preseleccionada, abrirla en pestaña "lista"
   useEffect(() => {
@@ -2249,6 +2257,21 @@ const SessionsView = ({
       showToast('success', 'Sesión eliminada');
     } catch { showToast('error', 'Error al eliminar la sesión'); }
     finally { setDeletingId(null); }
+  };
+
+  const handleDuplicate = async (session: Session) => {
+    setDuplicatingId(session.id);
+    try {
+      await onAddSession({
+        title: `${session.title || 'Sesión'} (copia)`,
+        date: new Date().toISOString().split('T')[0],
+        type: session.type,
+        notes: session.notes,
+        durationMins: session.durationMins,
+      });
+      showToast('success', `Sesión duplicada para hoy`);
+    } catch { showToast('error', 'Error al duplicar la sesión'); }
+    finally { setDuplicatingId(null); }
   };
 
   // ── Week view ──────────────────────────────────────────────────────────────
@@ -2431,11 +2454,15 @@ const SessionsView = ({
                 <div className="flex items-center gap-1.5">
                   {present > 0 && <span className="text-[9px] text-slate-500 font-bold mr-2">{present} presentes</span>}
                   {avgLoad !== null && <span className="text-[9px] text-slate-500 font-bold mr-2">{avgLoad} AU</span>}
-                  <button onClick={() => openEdit(session)}
+                  <button onClick={e => { e.stopPropagation(); openEdit(session); }}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all" title="Editar sesión">
                     <Edit2 size={13} />
                   </button>
-                  <button onClick={() => handleDelete(session.id)} disabled={deletingId === session.id}
+                  <button onClick={e => { e.stopPropagation(); handleDuplicate(session); }} disabled={duplicatingId === session.id}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-40" title="Duplicar a hoy">
+                    {duplicatingId === session.id ? <Loader2 size={13} className="animate-spin" /> : <Copy size={13} />}
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); handleDelete(session.id); }} disabled={deletingId === session.id}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40" title="Borrar sesión">
                     {deletingId === session.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </button>
@@ -3432,20 +3459,17 @@ const TodayView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DashboardView = ({
-  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, coachId
+  subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, coachId, onOpenSession
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
   wellnessReports: WellnessReport[]; sessions: Session[];
   onNavigate: (tab: string) => void; loadRecords: LoadRecord[]; coachId?: string;
+  onOpenSession: (s: Session) => void;
 }) => {
   const [cfgOpen, setCfgOpen] = useState(false);
   const [widgets, setWidgets] = useState<WidgetCfg[]>(() => getDashCfg(coachId || 'default'));
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
-  const [rpeModalOpen, setRpeModalOpen] = useState(false);
-  const [rpeSession, setRpeSession] = useState<string>('');
-  const [rpeValues, setRpeValues] = useState<Record<string, number>>({});
-  const [rpeSaving, setRpeSaving] = useState(false);
 
   const toggleWidget = (id: string) => {
     const next = widgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w);
@@ -3532,12 +3556,12 @@ const DashboardView = ({
 
   const KPI_CATALOG = [
     { id: 'players',       label: 'Jugadores',           value: players.length,                            sub: `${subjects.filter(s => s.role === Role.STAFF).length} staff`,           icon: Users,        color: 'text-blue-400',    action: 'roster'   },
-    { id: 'wellness',      label: 'Wellness hoy',         value: `${wellnessFilled}/${players.length}`,     sub: `${players.length - wellnessFilled} pendientes`,                          icon: Activity,     color: 'text-emerald-400', action: 'wellness' },
+    { id: 'wellness',      label: 'Wellness hoy',         value: `${wellnessFilled}/${players.length}`,     sub: `${players.length - wellnessFilled} pendientes`,                          icon: Activity,     color: 'text-emerald-400', action: 'health' },
     { id: 'injuries',      label: 'Lesiones activas',     value: activeIncidents.length,                    sub: `${activeIncidents.filter(i => i.severity === 'high').length} críticas`,  icon: HeartPulse,   color: activeIncidents.length > 0 ? 'text-red-400' : 'text-emerald-400', action: 'health' },
     { id: 'risk',          label: 'En riesgo hoy',        value: atRiskCount,                               sub: 'jugadores ≥ 55% riesgo',                                                 icon: AlertTriangle,color: atRiskCount > 0 ? 'text-yellow-400' : 'text-emerald-400', action: 'health' },
     { id: 'sessions_week', label: 'Sesiones esta semana', value: sessionsThisWeek,                          sub: 'últimos 7 días',                                                         icon: Calendar,     color: 'text-purple-400',  action: 'sessions' },
-    { id: 'avg_load',      label: 'Carga media 7d',       value: avgLoad7 !== null ? `${avgLoad7} AU` : '—', sub: 'carga media por jugador',                                              icon: Zap,          color: 'text-yellow-400',  action: 'wellness' },
-    { id: 'avg_wellness',  label: 'Wellness medio 7d',    value: avgWellness7 !== null ? `${avgWellness7}/5` : '—', sub: 'promedio del equipo',                                          icon: TrendingUp,   color: 'text-emerald-400', action: 'wellness' },
+    { id: 'avg_load',      label: 'Carga media 7d',       value: avgLoad7 !== null ? `${avgLoad7} AU` : '—', sub: 'carga media por jugador',                                              icon: Zap,          color: 'text-yellow-400',  action: 'health' },
+    { id: 'avg_wellness',  label: 'Wellness medio 7d',    value: avgWellness7 !== null ? `${avgWellness7}/5` : '—', sub: 'promedio del equipo',                                          icon: TrendingUp,   color: 'text-emerald-400', action: 'health' },
     { id: 'next_match',    label: 'Próximo partido',      value: daysToNextMatch !== null ? `${daysToNextMatch}d` : '—', sub: nextMatch ? `vs ${nextMatch.opponent}` : 'sin programar', icon: Trophy,       color: 'text-emerald-400', action: 'matches'  },
   ];
 
@@ -3614,7 +3638,7 @@ const DashboardView = ({
             <div className="space-y-2">
               {[
                 { label: 'Pasar Lista Hoy', action: 'sessions', icon: Check, color: 'text-emerald-400' },
-                { label: 'Registrar Wellness', action: 'wellness', icon: Activity, color: 'text-blue-400' },
+                { label: 'Registrar Wellness', action: 'health', icon: Activity, color: 'text-blue-400' },
                 { label: 'Ver Salud', action: 'health', icon: HeartPulse, color: 'text-red-400' },
               ].map(item => (
                 <button key={item.label} onClick={() => onNavigate(item.action)}
@@ -3631,12 +3655,6 @@ const DashboardView = ({
     ),
 
     availability: (() => {
-      const acwrColor = (v: number) => {
-        if (v < 0.8) return { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'BAJO', bar: '#3b82f6' };
-        if (v <= 1.3) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO', bar: '#10b981' };
-        if (v <= 1.5) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30', label: 'PRECAUCIÓN', bar: '#eab308' };
-        return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'RIESGO', bar: '#ef4444' };
-      };
       const playerACWR = players.map(p => {
         const acwr = calculateACWR(loadRecords, sessions, p.id);
         const load7 = (() => {
@@ -3657,7 +3675,10 @@ const DashboardView = ({
               <h3 className="font-black text-white text-sm">Disponibilidad del Equipo</h3>
               <p className="text-[9px] text-slate-500 font-mono mt-0.5">ACWR = carga aguda 7d / crónica 28d · zona óptima 0.8–1.3</p>
             </div>
-            <button onClick={() => setRpeModalOpen(true)}
+            <button onClick={() => {
+              const latest = [...sessions].sort((a, b) => b.date.localeCompare(a.date))[0];
+              if (latest) { onOpenSession(latest); } else { onNavigate('sessions'); }
+            }}
               className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all">
               <Zap size={11} /> RPE post-sesión
             </button>
@@ -3685,7 +3706,7 @@ const DashboardView = ({
                         <span className={cn("text-sm font-black tabular-nums", ac.text)}>{acwr!.toFixed(2)}</span>
                         <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg uppercase border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
                       </>
-                    ) : <span className="text-xs text-slate-700">—</span>}
+                    ) : <span className="text-[9px] text-slate-600 font-mono">Sin datos (≥28d)</span>}
                   </div>
                 </div>
               );
@@ -3724,7 +3745,7 @@ const DashboardView = ({
                             </div>
                             <span className={cn("text-xs font-black", ac?.text)}>{acwr.toFixed(2)}</span>
                           </div>
-                        ) : <span className="text-[10px] text-slate-700">Sin datos</span>}
+                        ) : <span className="text-[9px] text-slate-600 font-mono">Sin datos — necesita 28d</span>}
                       </td>
                       <td className="px-6 py-3 text-center">
                         {ac ? <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
@@ -3777,114 +3798,7 @@ const DashboardView = ({
       {/* Widgets en orden */}
       {widgets.filter(w => w.visible).map(w => widgetMap[w.id])}
 
-      {/* Modal RPE Post-Sesión */}
-      {rpeModalOpen && (() => {
-        const recentForRpe = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-        const selectedSession = sessions.find(s => s.id === rpeSession);
-        const handleSaveRpe = async () => {
-          if (!selectedSession) return;
-          setRpeSaving(true);
-          try {
-            const records = players
-              .filter(p => (rpeValues[p.id] ?? 0) > 0)
-              .map(p => {
-                const rpe = rpeValues[p.id];
-                const load = rpe * (selectedSession.durationMins || 60);
-                return {
-                  team_id: selectedSession.teamId,
-                  session_id: selectedSession.id,
-                  subject_id: p.id,
-                  borg_scale: rpe,
-                  duration_mins: selectedSession.durationMins || 60,
-                  session_load: load,
-                };
-              });
-            if (records.length > 0) {
-              await supabase.from('load_records').upsert(records, { onConflict: 'session_id,subject_id' });
-            }
-            setRpeModalOpen(false);
-            setRpeValues({});
-            setRpeSession('');
-          } finally {
-            setRpeSaving(false);
-          }
-        };
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRpeModalOpen(false)}>
-            <div className="bg-slate-900 border border-slate-700 rounded-[24px] p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h3 className="font-black text-white text-sm">Registrar RPE Post-Sesión</h3>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Selecciona sesión · Introduce RPE 1–10 por jugador · Carga = RPE × minutos</p>
-                </div>
-                <button onClick={() => setRpeModalOpen(false)} className="text-slate-600 hover:text-white transition-colors"><X size={18} /></button>
-              </div>
-
-              {/* Selector de sesión */}
-              <div className="mb-5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Sesión</label>
-                <select value={rpeSession} onChange={e => setRpeSession(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
-                  <option value="">— Seleccionar sesión —</option>
-                  {recentForRpe.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {new Date(s.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} · {s.title || 'Sesión'} ({s.durationMins || 60} min)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Tabla de jugadores + RPE */}
-              {rpeSession && (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 mb-1">
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Jugador</span>
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-center w-20">RPE (1–10)</span>
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-right w-20">Carga (AU)</span>
-                  </div>
-                  {players.map(p => {
-                    const rpe = rpeValues[p.id] ?? 0;
-                    const load = rpe > 0 ? rpe * (selectedSession?.durationMins || 60) : 0;
-                    return (
-                      <div key={p.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2.5 bg-slate-800 rounded-xl border border-slate-700">
-                        <div>
-                          <span className="text-xs font-bold text-white">{p.name}</span>
-                          <span className="text-[9px] text-slate-600 ml-2 font-mono">#{p.number}</span>
-                        </div>
-                        <input
-                          type="number" min={0} max={10} step={0.5}
-                          value={rpe || ''} placeholder="—"
-                          onChange={e => {
-                            const v = Math.min(10, Math.max(0, parseFloat(e.target.value) || 0));
-                            setRpeValues(prev => ({ ...prev, [p.id]: v }));
-                          }}
-                          className="w-20 bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-emerald-500 font-mono"
-                        />
-                        <span className={cn("text-xs font-black text-right w-20 font-mono", load > 0 ? 'text-emerald-400' : 'text-slate-700')}>
-                          {load > 0 ? `${Math.round(load)} AU` : '—'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <div className="flex gap-3 pt-3">
-                    <button onClick={() => {
-                      const allSame: Record<string, number> = {};
-                      players.forEach(p => { allSame[p.id] = 5; });
-                      setRpeValues(allSame);
-                    }} className="flex-1 py-2 rounded-xl border border-slate-700 text-[10px] font-bold text-slate-500 hover:text-white transition-all">
-                      Rellenar todos con 5
-                    </button>
-                    <button onClick={handleSaveRpe} disabled={rpeSaving || !rpeSession}
-                      className="flex-1 py-2 rounded-xl bg-emerald-500 text-slate-950 text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50">
-                      {rpeSaving ? 'Guardando…' : `Guardar (${Object.values(rpeValues).filter(v => v > 0).length} jugadores)`}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
+      {/* RPE: navega directamente a la sesión más reciente en SessionsView */}
 
       {/* Panel de configuración */}
       {cfgOpen && (
@@ -3964,15 +3878,16 @@ const DashboardView = ({
 
 const HealthView = ({
   subjects, incidents, wellnessReports, loadRecords, onAddIncident,
-  onUpdateIncident, isAddingIncident, setIsAddingIncident, showToast, sessions
+  onUpdateIncident, isAddingIncident, setIsAddingIncident, showToast, sessions, onSaveWellness
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; wellnessReports: WellnessReport[];
   loadRecords: LoadRecord[]; onAddIncident: (i: Partial<HealthIncident>) => Promise<void>;
   onUpdateIncident: (id: string, u: Partial<HealthIncident>) => Promise<void>;
   isAddingIncident: boolean; setIsAddingIncident: (v: boolean) => void;
   showToast: (t: ToastType, m: string) => void; sessions: Session[];
+  onSaveWellness: (w: WellnessReport) => Promise<void>;
 }) => {
-  const [activeTab, setActiveTab] = useState<'scatter' | 'acwr' | 'incidents'>('scatter');
+  const [activeTab, setActiveTab] = useState<'scatter' | 'acwr' | 'incidents' | 'wellness'>('incidents');
   const [incidentForm, setIncidentForm] = useState({ subjectId: '', type: '', severity: 'medium' as const, date: new Date().toISOString().split('T')[0], notes: '', status: 'active' });
   const [savingIncident, setSavingIncident] = useState(false);
   const players = subjects.filter(s => s.role === Role.PLAYER);
@@ -4007,7 +3922,8 @@ const HealthView = ({
       }
       return sum;
     })();
-    return { name: p.name.split(' ')[0], acwr, load7: Math.round(totalLoad7) };
+    const shortName = p.lastName ? `${p.name} ${p.lastName.split(' ')[0]}` : p.name;
+    return { name: shortName, acwr, load7: Math.round(totalLoad7) };
   }).filter(d => d.acwr !== null) as { name: string; acwr: number; load7: number }[];
 
   const getACWRColor = (v: number) => {
@@ -4034,14 +3950,15 @@ const HealthView = ({
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1 w-fit">
+      <div className="flex flex-wrap gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1 w-fit">
         {[
-          { id: 'scatter', label: 'Carga vs Wellness' },
-          { id: 'acwr', label: 'ACWR / Monotonía' },
           { id: 'incidents', label: `Lesiones (${activeIncidents.length})` },
+          { id: 'acwr', label: 'ACWR' },
+          { id: 'wellness', label: 'Estado subjetivo' },
+          { id: 'scatter', label: 'Carga × Wellness' },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={cn("px-5 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide",
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide",
               activeTab === tab.id ? "bg-emerald-500 text-slate-950 shadow-md" : "text-slate-500 hover:text-white")}>
             {tab.label}
           </button>
@@ -4183,6 +4100,20 @@ const HealthView = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Wellness tab — formulario estado subjetivo */}
+      {activeTab === 'wellness' && (
+        <div className="space-y-4">
+          <div className="bg-slate-900/60 border border-slate-700 rounded-2xl px-5 py-3 flex items-start gap-3">
+            <Info size={14} className="text-slate-500 mt-0.5 shrink-0" />
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              <span className="text-slate-300 font-bold">Estado subjetivo (Índice de Hooper)</span> — Requiere que el entrenador introduzca los datos por cada jugador.
+              El riesgo de lesión objetivo se calcula automáticamente con ACWR desde los datos de carga.
+            </p>
+          </div>
+          <WellnessTestView subjects={subjects} wellnessReports={wellnessReports} onSave={onSaveWellness} />
         </div>
       )}
 
@@ -5111,7 +5042,8 @@ const PlayerDetailDashboard = ({
   };
 
   const SUBTABS = [
-    { id: 'bio', label: 'Perfil' }, { id: 'wellness_history', label: 'Wellness' },
+    { id: 'bio', label: 'Perfil' }, { id: 'carga', label: 'Carga & ACWR' },
+    { id: 'wellness_history', label: 'Wellness' },
     { id: 'physical', label: 'Físico' }, { id: 'evals', label: 'Evaluaciones' },
     { id: 'health', label: 'Salud' },
   ];
@@ -5206,6 +5138,130 @@ const PlayerDetailDashboard = ({
             </div>
           </div>
         )}
+
+        {/* CARGA & ACWR */}
+        {activeTab === 'carga' && (() => {
+          const playerACWR = calculateACWR(loadRecords, sessions, player.id);
+          const acwrCol = playerACWR !== null ? acwrColor(playerACWR) : null;
+
+          // Últimas 4 semanas de carga diaria
+          const last28: { date: string; load: number }[] = Array.from({ length: 28 }, (_, i) => {
+            const d = new Date(Date.now() - (27 - i) * 86400000).toISOString().split('T')[0];
+            const dayIds = new Set(sessions.filter(s => s.date?.toString().startsWith(d)).map(s => s.id));
+            const load = loadRecords
+              .filter(l => l.subjectId === player.id && dayIds.has(l.sessionId))
+              .reduce((acc, l) => acc + (l.sessionLoad || 0), 0);
+            return { date: d, load };
+          });
+
+          // Streak de presencia consecutiva (sesiones con asistencia o carga)
+          const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+          let streak = 0;
+          for (const s of sortedSessions) {
+            const hasLoad = loadRecords.some(l => l.subjectId === player.id && l.sessionId === s.id && (l.sessionLoad || 0) > 0);
+            const hasAtt = attendance.some(a => a.subjectId === player.id && a.sessionId === s.id && a.status === 'present');
+            if (hasLoad || hasAtt) streak++;
+            else break;
+          }
+
+          // Últimas 8 sesiones con estado
+          const recentSess = sortedSessions.slice(0, 8).map(s => {
+            const att = attendance.find(a => a.subjectId === player.id && a.sessionId === s.id);
+            const load = loadRecords.find(l => l.subjectId === player.id && l.sessionId === s.id);
+            return { session: s, att, load };
+          });
+
+          return (
+            <div className="space-y-5">
+              {/* ACWR + streak cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className={cn("border rounded-2xl p-4", acwrCol ? acwrCol.border : 'border-slate-800', 'bg-slate-950')}>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">ACWR Actual</p>
+                  {playerACWR !== null && acwrCol ? (
+                    <>
+                      <p className={cn("text-2xl font-black", acwrCol.text)}>{playerACWR.toFixed(2)}</p>
+                      <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-lg uppercase border mt-1 inline-block", acwrCol.bg, acwrCol.text, acwrCol.border)}>{acwrCol.label}</span>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-600 italic">Sin datos (≥28d)</p>
+                  )}
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Carga Aguda (7d)</p>
+                  <p className="text-2xl font-black text-white">{last28.slice(-7).reduce((a, d) => a + d.load, 0)}<span className="text-xs text-slate-500 ml-1">AU</span></p>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 col-span-2 md:col-span-1">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Racha Activa</p>
+                  <p className="text-2xl font-black text-white">{streak}<span className="text-xs text-slate-500 ml-1">sesiones</span></p>
+                </div>
+              </div>
+
+              {/* Mini-gráfico carga 28d */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3">Carga últimas 4 semanas (AU)</p>
+                <div className="h-[120px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={last28} margin={{ top: 2, right: 4, left: -28, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="date" fontSize={7} axisLine={false} tickLine={false} stroke="#475569"
+                        tickFormatter={d => new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' })}
+                        interval={6} />
+                      <YAxis fontSize={8} axisLine={false} tickLine={false} stroke="#475569" />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '10px', fontSize: '10px' }}
+                        formatter={(v: any) => [`${v} AU`, 'Carga']}
+                        labelFormatter={l => new Date(l + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} />
+                      <Bar dataKey="load" radius={[3, 3, 0, 0]}>
+                        {last28.map((d, i) => (
+                          <Cell key={i} fill={d.load === 0 ? '#1e293b' : d.load > 400 ? '#ef4444' : d.load > 250 ? '#eab308' : '#10b981'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex items-center gap-4 mt-2 justify-center">
+                  {[{ col: '#10b981', label: '≤250 AU' }, { col: '#eab308', label: '251–400 AU' }, { col: '#ef4444', label: '>400 AU' }].map(z => (
+                    <span key={z.label} className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: z.col }} />{z.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Últimas sesiones */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-4 py-3 border-b border-slate-800">Últimas sesiones</p>
+                {recentSess.length === 0 ? (
+                  <p className="px-4 py-6 text-xs text-slate-600 italic">Sin sesiones registradas</p>
+                ) : (
+                  <div className="divide-y divide-slate-800/50">
+                    {recentSess.map(({ session, att, load }) => {
+                      const status = load && (load.sessionLoad || 0) > 0 ? 'done' : att ? 'present' : 'absent';
+                      return (
+                        <div key={session.id} className="flex items-center justify-between px-4 py-3">
+                          <div>
+                            <p className="text-xs font-bold text-white">{session.title || 'Sesión'}</p>
+                            <p className="text-[9px] font-mono text-slate-500 mt-0.5">{new Date(session.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {load && (load.sessionLoad || 0) > 0 && (
+                              <span className="text-[10px] font-mono text-slate-400">{load.sessionLoad} AU · RPE {load.borgScale}</span>
+                            )}
+                            <span className={cn("text-[8px] font-black px-2 py-1 rounded-lg uppercase border",
+                              status === 'done' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                              status === 'present' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                              'bg-slate-800 text-slate-500 border-slate-700')}>
+                              {status === 'done' ? '✓ RPE' : status === 'present' ? 'Presente' : att?.status === 'absent' ? 'Ausente' : att?.status === 'late' ? 'Tarde' : att?.status === 'justified' ? 'Justif.' : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* WELLNESS HISTORY */}
         {activeTab === 'wellness_history' && (
@@ -7364,7 +7420,8 @@ export default function App() {
       );
       case 'dashboard': return (
         <DashboardView subjects={teamSubjects} incidents={incidents} matches={matches}
-          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} coachId={currentUser?.id} />
+          wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} coachId={currentUser?.id}
+          onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }} />
       );
       case 'agenda': return (
         <AgendaView teams={teams} />
@@ -7409,14 +7466,13 @@ export default function App() {
           onAddTestDefinition={handleAddTestDefinition}
           showToast={showToast} />
       );
-      case 'wellness': return (
-        <WellnessTestView subjects={teamSubjects} wellnessReports={wellnessReports} onSave={handleAddWellness} />
-      );
+      case 'wellness': // fallthrough — Wellness ahora vive dentro de Salud
       case 'health': return (
         <HealthView subjects={teamSubjects} incidents={incidents} wellnessReports={wellnessReports}
           loadRecords={loadRecords} sessions={sessions}
           onAddIncident={handleAddIncident} onUpdateIncident={handleUpdateIncident}
-          isAddingIncident={isAddingIncident} setIsAddingIncident={setIsAddingIncident} showToast={showToast} />
+          isAddingIncident={isAddingIncident} setIsAddingIncident={setIsAddingIncident}
+          showToast={showToast} onSaveWellness={handleAddWellness} />
       );
       case 'reports': return (
         <ReportsView subjects={teamSubjects} incidents={incidents} evaluations={evaluations}

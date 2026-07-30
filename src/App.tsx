@@ -140,15 +140,15 @@ const calculateRiskScore = (wellness: number, load: number): number => {
 
 const getWellnessColor = (val: number) => {
   if (val <= 2) return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-  if (val <= 4) return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+  if (val <= 3.5) return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
   return "bg-red-500/20 text-red-500 border border-red-500/30";
 };
 
 const getRiskColor = (score: number) => {
   if (score >= 75) return { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500/30', label: 'CRÍTICO' };
-  if (score >= 55) return { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500/30', label: 'ALERTA' };
-  if (score >= 35) return { bg: 'bg-yellow-500', text: 'text-yellow-500', border: 'border-yellow-500/30', label: 'VIGILAR' };
-  return { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500/30', label: 'ÓPTIMO' };
+  if (score >= 55) return { bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500/30', label: 'ALERTA' };
+  if (score >= 35) return { bg: 'bg-yellow-500', text: 'text-yellow-400', border: 'border-yellow-500/30', label: 'VIGILAR' };
+  return { bg: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO' };
 };
 
 // ACWR: Acute (7d) / Chronic (28d) load ratio
@@ -707,15 +707,15 @@ const TeamSelectionView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { id: 'dashboard',      label: 'Dashboard',       icon: BarChart3 },
-  { id: 'agenda',         label: 'Mi Agenda',        icon: Calendar },
+  { id: 'today',          label: 'Hoy',              icon: CheckCircle },
+  { id: 'dashboard',      label: 'Dashboard',        icon: BarChart3 },
   { id: 'roster',         label: 'Plantilla',        icon: Users },
   { id: 'sessions',       label: 'Sesiones',         icon: Timer },
   { id: 'matches',        label: 'Partidos',         icon: Trophy },
   { id: 'physical_tests', label: 'Tests Físicos',    icon: Dumbbell },
   { id: 'prepfisica',     label: 'Prep. Física',     icon: Zap },
-  { id: 'wellness',       label: 'Wellness',         icon: Activity },
   { id: 'health',         label: 'Salud',            icon: HeartPulse },
+  { id: 'wellness',       label: 'Wellness',         icon: Activity },
   { id: 'reports',        label: 'Informes IA',      icon: BrainCircuit },
   { id: 'profile',        label: 'Perfil',           icon: User },
 ];
@@ -818,10 +818,10 @@ const Sidebar = ({
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch h-16">
           {[
-            { id: 'dashboard',  label: 'Inicio',    icon: BarChart3 },
-            { id: 'roster',     label: 'Plantilla', icon: Users },
-            { id: 'sessions',   label: 'Sesiones',  icon: Timer },
-            { id: 'health',     label: 'Salud',     icon: HeartPulse },
+            { id: 'today',    label: 'Hoy',       icon: CheckCircle },
+            { id: 'roster',   label: 'Plantilla', icon: Users },
+            { id: 'sessions', label: 'Sesiones',  icon: Timer },
+            { id: 'health',   label: 'Salud',     icon: HeartPulse },
           ].map(item => (
             <button key={item.id}
               onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
@@ -849,7 +849,8 @@ const Sidebar = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HEADER_CONFIG: Record<string, { title: string; subtitle: string; action?: string }> = {
-  dashboard:      { title: 'Dashboard',          subtitle: 'Resumen del equipo y alertas del día' },
+  today:          { title: 'Hoy',                subtitle: 'Tu jornada de entrenamiento' },
+  dashboard:      { title: 'Dashboard',          subtitle: 'Métricas y gráficos del equipo' },
   roster:         { title: 'Plantilla',           subtitle: 'Gestión de jugadores y staff', action: '+ Jugador' },
   sessions:       { title: 'Sesiones',            subtitle: 'Entrenamientos y registro de carga', action: '+ Sesión' },
   matches:        { title: 'Partidos',            subtitle: 'Calendario y estadísticas de partido', action: '+ Partido' },
@@ -2112,6 +2113,7 @@ const SessionsView = ({
   sessions, onAddSession, onDeleteSession, onUpdateSession, subjects, teamId, onQuickAttendance,
   isAdding, setIsAdding, attendanceRecords, loadRecords, showToast,
   trainingSchedules, onAddSchedule, onDeleteSchedule, onGenerateSessions,
+  initialSession, onSessionOpened,
 }: {
   sessions: Session[];
   onAddSession: (s: Partial<Session>) => Promise<void>;
@@ -2129,11 +2131,13 @@ const SessionsView = ({
   onAddSchedule: (s: Partial<TrainingSchedule>) => Promise<void>;
   onDeleteSchedule: (id: string) => Promise<void>;
   onGenerateSessions: (dateFrom: string, dateTo: string) => Promise<void>;
+  initialSession?: Session | null;
+  onSessionOpened?: () => void;
 }) => {
   type ViewMode = 'week' | 'month' | 'day';
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(initialSession || null);
   const [selectedSessionTab, setSelectedSessionTab] = useState<'anotaciones' | 'plan' | 'lista' | 'material'>('anotaciones');
   const [showAttendance, setShowAttendance] = useState(false);
   const [showScheduleManager, setShowScheduleManager] = useState(false);
@@ -2143,6 +2147,15 @@ const SessionsView = ({
   const [editForm, setEditForm] = useState({ title: '', date: '', startTime: '', type: 'TRAINING', notes: '', durationMins: 90, zone: '', phase: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Si viene de la vista Hoy con una sesión preseleccionada, abrirla en pestaña "lista"
+  useEffect(() => {
+    if (initialSession) {
+      setSelectedSession(initialSession);
+      setSelectedSessionTab('lista');
+      onSessionOpened?.();
+    }
+  }, [initialSession]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
 
@@ -2268,10 +2281,18 @@ const SessionsView = ({
               </div>
               {/* Sessions */}
               <div className="space-y-1 flex-1">
-                {daySessions.map(s => (
+                {daySessions.map(s => {
+                  const sAtt = attendanceRecords.filter(a => a.sessionId === s.id);
+                  const sLoad = loadRecords.filter(l => l.sessionId === s.id && (l.sessionLoad || 0) > 0);
+                  const sDot = sAtt.length > 0 && sLoad.length > 0 ? 'bg-emerald-400'
+                    : sAtt.length > 0 || sLoad.length > 0 ? 'bg-yellow-400' : 'bg-slate-600';
+                  return (
                   <div key={s.id}
                     className={cn('px-2 py-1.5 rounded-lg border text-[9px] font-bold leading-tight transition-all group/chip', tc(s.type).bg, tc(s.type).text, tc(s.type).border)}>
-                    <div className="truncate">{s.title || tc(s.type).label}</div>
+                    <div className="flex items-center gap-1">
+                      <div className={cn('w-1.5 h-1.5 rounded-full shrink-0', sDot)} />
+                      <div className="truncate flex-1">{s.title || tc(s.type).label}</div>
+                    </div>
                     <div className="opacity-60 mt-0.5">{s.durationMins}′</div>
                     {/* Mini actions on hover */}
                     <div className="flex gap-1 mt-1 opacity-0 group-hover/chip:opacity-100 transition-all">
@@ -2285,7 +2306,8 @@ const SessionsView = ({
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               {/* Add hint */}
               {!isPast && daySessions.length === 0 && (
@@ -2384,20 +2406,31 @@ const SessionsView = ({
         ) : daySessions.map(session => {
           const att = attendanceRecords.filter(a => a.sessionId === session.id);
           const present = att.filter(a => a.status === 'present').length;
-          const loads = loadRecords.filter(l => l.sessionId === session.id);
+          const loads = loadRecords.filter(l => l.sessionId === session.id && (l.sessionLoad || 0) > 0);
           const avgLoad = loads.length ? Math.round(loads.reduce((a, l) => a + (l.sessionLoad || 0), 0) / loads.length) : null;
           const col = tc(session.type);
+          // Badge de estado de la sesión
+          const sessionStatus = att.length === 0 && loads.length === 0 ? 'pending'
+            : att.length > 0 && loads.length > 0 ? 'done' : 'partial';
+          const statusBadge = {
+            pending: { label: 'Pendiente', cls: 'bg-slate-800 text-slate-500 border-slate-700' },
+            partial: { label: 'Parcial',   cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+            done:    { label: '✓ Cerrada', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+          }[sessionStatus];
           return (
             <div key={session.id} className={cn('bg-slate-900 border rounded-[20px] p-5 cursor-pointer hover:border-slate-500 transition-colors', col.border)} onClick={() => { setSelectedSessionTab('anotaciones'); setSelectedSession(session); }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded-md border inline-block mb-2', col.bg.split(' ')[0], col.text, col.border)}>{col.label}</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded-md border inline-block', col.bg.split(' ')[0], col.text, col.border)}>{col.label}</span>
+                    <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded-md border', statusBadge.cls)}>{statusBadge.label}</span>
+                  </div>
                   <h4 className="font-black text-white text-base">{session.title || 'Sesión sin título'}</h4>
                   <p className="text-[10px] text-slate-500 mt-1">{session.durationMins} min</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {present > 0 && <span className="text-[9px] text-emerald-400 font-bold mr-2">{present} presentes</span>}
-                  {avgLoad !== null && <span className="text-[9px] text-emerald-400 font-bold mr-2">{avgLoad} AU</span>}
+                  {present > 0 && <span className="text-[9px] text-slate-500 font-bold mr-2">{present} presentes</span>}
+                  {avgLoad !== null && <span className="text-[9px] text-slate-500 font-bold mr-2">{avgLoad} AU</span>}
                   <button onClick={() => openEdit(session)}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all" title="Editar sesión">
                     <Edit2 size={13} />
@@ -3157,6 +3190,247 @@ const getDashCfg = (coachId: string): WidgetCfg[] => {
 const saveDashCfg = (coachId: string, cfg: WidgetCfg[]) =>
   localStorage.setItem(`ck_dash_${coachId}`, JSON.stringify(cfg));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TODAY VIEW  — pantalla de entrada: sesión del día, alertas y resumen
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TodayView = ({
+  subjects, incidents, matches, sessions, loadRecords, wellnessReports,
+  attendanceRecords, onNavigate, onOpenSession,
+}: {
+  subjects: Subject[]; incidents: HealthIncident[]; matches: Match[];
+  sessions: Session[]; loadRecords: LoadRecord[]; wellnessReports: WellnessReport[];
+  attendanceRecords: AttendanceRecord[];
+  onNavigate: (tab: string) => void;
+  onOpenSession: (session: Session) => void;
+}) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const players = subjects.filter(s => s.role === Role.PLAYER);
+
+  // Sesión de hoy (puede haber más de una)
+  const todaySessions = sessions.filter(s => s.date?.toString().startsWith(today))
+    .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+  // Estado de cada sesión: completada si tiene asistencia + RPE para al least 1 jugador
+  const getSessionStatus = (session: Session): 'pending' | 'partial' | 'done' => {
+    const att = attendanceRecords.filter(a => a.sessionId === session.id);
+    const load = loadRecords.filter(l => l.sessionId === session.id && (l.sessionLoad || 0) > 0);
+    if (att.length === 0 && load.length === 0) return 'pending';
+    if (att.length > 0 && load.length > 0) return 'done';
+    return 'partial';
+  };
+
+  // Próxima sesión si no hay ninguna hoy
+  const nextSession = sessions
+    .filter(s => s.date > today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  // Lesionados activos
+  const activeIncidents = incidents.filter(i => i.status === 'active' || i.status === 'monitoring');
+
+  // Jugadores con ACWR en zona de riesgo o precaución
+  const acwrAlerts = players
+    .map(p => ({ player: p, acwr: calculateACWR(loadRecords, sessions, p.id) }))
+    .filter(({ acwr }) => acwr !== null && acwr > 1.3)
+    .sort((a, b) => (b.acwr || 0) - (a.acwr || 0));
+
+  // Próximo partido
+  const nextMatch = matches
+    .filter(m => m.status === 'SCHEDULED' && m.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const daysToMatch = nextMatch
+    ? Math.ceil((new Date(nextMatch.date).getTime() - now.getTime()) / 86400000)
+    : null;
+
+  // Saludo por hora
+  const hour = now.getHours();
+  const greeting = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+
+  // Nombre del día
+  const dayLabel = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const totalAlerts = activeIncidents.length + acwrAlerts.filter(a => (a.acwr || 0) > 1.5).length;
+
+  return (
+    <div className="space-y-5">
+      {/* Header saludo */}
+      <div className="mb-2">
+        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.3em]">{greeting}</p>
+        <h2 className="text-2xl font-black text-white capitalize mt-0.5">{dayLabel}</h2>
+      </div>
+
+      {/* SESIÓN DE HOY */}
+      <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-800 flex items-center gap-2">
+          <Timer size={14} className="text-emerald-400" />
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sesión hoy</span>
+        </div>
+
+        {todaySessions.length > 0 ? (
+          <div className="divide-y divide-slate-800/60">
+            {todaySessions.map(session => {
+              const status = getSessionStatus(session);
+              const presentCount = attendanceRecords.filter(a => a.sessionId === session.id && a.status === 'present').length;
+              return (
+                <div key={session.id} className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <h3 className="font-black text-white text-base leading-tight">{session.title || 'Entrenamiento'}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{session.durationMins} min · {session.type}</p>
+                    </div>
+                    <span className={cn(
+                      "text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border shrink-0",
+                      status === 'done' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                      status === 'partial' ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' :
+                      'bg-slate-800 text-slate-500 border-slate-700'
+                    )}>
+                      {status === 'done' ? '✓ Completada' : status === 'partial' ? 'Parcial' : 'Pendiente'}
+                    </span>
+                  </div>
+
+                  {status === 'done' ? (
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Users size={12} className="text-emerald-400" />{presentCount} presentes</span>
+                      <button onClick={() => onOpenSession(session)} className="text-emerald-500 font-bold hover:underline ml-auto">Editar →</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => onOpenSession(session)}
+                      className="w-full py-3.5 bg-emerald-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-wide hover:bg-emerald-400 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                      <Check size={16} />
+                      {status === 'partial' ? 'Completar lista + RPE' : 'Pasar lista + RPE'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-5">
+            <p className="text-sm text-slate-500 mb-1">Sin sesión programada hoy.</p>
+            {nextSession && (
+              <p className="text-xs text-slate-600">
+                Próxima: <span className="text-slate-400 font-bold">{nextSession.title || 'Entrenamiento'}</span>
+                {' · '}{new Date(nextSession.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </p>
+            )}
+            <button onClick={() => onNavigate('sessions')}
+              className="mt-4 w-full py-3 border border-slate-700 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:border-slate-600 transition-all">
+              + Crear sesión para hoy
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ALERTAS */}
+      {(activeIncidents.length > 0 || acwrAlerts.length > 0) && (
+        <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-orange-400" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Atención</span>
+              {totalAlerts > 0 && (
+                <span className="w-5 h-5 bg-orange-500 rounded-full text-[9px] font-black text-white flex items-center justify-center">{totalAlerts}</span>
+              )}
+            </div>
+          </div>
+          <div className="divide-y divide-slate-800/60">
+            {/* Lesionados */}
+            {activeIncidents.map(incident => {
+              const player = subjects.find(s => s.id === incident.subjectId);
+              return (
+                <div key={incident.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-bold text-white">{player?.name} {player?.lastName || ''}</span>
+                    <span className="text-xs text-slate-500 ml-2">{incident.type}</span>
+                  </div>
+                  <span className={cn(
+                    "text-[8px] font-black px-2 py-0.5 rounded-md uppercase",
+                    incident.severity === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                  )}>{incident.severity === 'high' ? 'Alta' : 'Media'}</span>
+                </div>
+              );
+            })}
+            {/* ACWR en riesgo/precaución */}
+            {acwrAlerts.map(({ player, acwr }) => {
+              const zone = acwr! > 1.5 ? { label: 'RIESGO', color: 'text-red-400', dot: 'bg-red-500' }
+                : { label: 'PRECAUCIÓN', color: 'text-yellow-400', dot: 'bg-yellow-500' };
+              return (
+                <div key={player.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className={cn("w-2 h-2 rounded-full shrink-0", zone.dot)} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-bold text-white">{player.name} {player.lastName || ''}</span>
+                    <span className="text-xs text-slate-500 ml-2">ACWR {acwr!.toFixed(2)}</span>
+                  </div>
+                  <span className={cn("text-[8px] font-black", zone.color)}>{zone.label}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="px-5 py-3 border-t border-slate-800/60">
+            <button onClick={() => onNavigate('health')} className="text-[10px] text-emerald-500 font-bold hover:underline uppercase tracking-wide">Ver módulo Salud →</button>
+          </div>
+        </div>
+      )}
+
+      {/* EQUIPO OK si no hay alertas */}
+      {activeIncidents.length === 0 && acwrAlerts.length === 0 && players.length > 0 && (
+        <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-[24px] px-5 py-4 flex items-center gap-3">
+          <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
+            <Check size={16} className="text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-black text-emerald-400">Equipo en buen estado</p>
+            <p className="text-xs text-slate-500">Sin lesiones activas ni alertas de carga</p>
+          </div>
+        </div>
+      )}
+
+      {/* PRÓXIMO PARTIDO */}
+      {nextMatch && (
+        <button onClick={() => onNavigate('matches')}
+          className="w-full bg-slate-900 border border-slate-800 rounded-[24px] p-5 text-left hover:border-slate-700 transition-all group">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Próximo partido</p>
+              <h4 className="font-black text-white text-base">{nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponent}</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {new Date(nextMatch.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
+                {nextMatch.location && ` · ${nextMatch.location}`}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-black text-white">{daysToMatch}</p>
+              <p className="text-[9px] text-slate-500 uppercase">{daysToMatch === 1 ? 'día' : 'días'}</p>
+            </div>
+          </div>
+        </button>
+      )}
+
+      {/* ACCESOS RÁPIDOS */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: 'Ver plantilla', icon: Users, tab: 'roster', color: 'text-blue-400' },
+          { label: 'Analytics', icon: BarChart3, tab: 'dashboard', color: 'text-purple-400' },
+          { label: 'Partidos', icon: Trophy, tab: 'matches', color: 'text-yellow-400' },
+          { label: 'Tests físicos', icon: Dumbbell, tab: 'physical_tests', color: 'text-orange-400' },
+        ].map(item => (
+          <button key={item.tab} onClick={() => onNavigate(item.tab)}
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-left hover:border-slate-700 transition-all flex items-center gap-3">
+            <item.icon size={16} className={item.color} />
+            <span className="text-xs font-bold text-slate-300">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DASHBOARD VIEW  (métricas, gráficos y configuración)
+// ─────────────────────────────────────────────────────────────────────────────
+
 const DashboardView = ({
   subjects, incidents, matches, wellnessReports, sessions, onNavigate, loadRecords, coachId
 }: {
@@ -3195,19 +3469,22 @@ const DashboardView = ({
   const todayWellness = wellnessReports.filter(w => w.date === today);
   const activeIncidents = incidents.filter(i => i.status === 'active' || i.status === 'monitoring');
   const nextMatch = matches.filter(m => m.status === 'SCHEDULED').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
-  const recentSessions = sessions.slice(0, 3);
+  const recentSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
 
   // Weekly load chart (last 7 days)
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0];
     const daySessions = sessions.filter(s => s.date?.toString().startsWith(d));
     const dayIds = new Set(daySessions.map(s => s.id));
-    const dayLoad = loadRecords.filter(l => dayIds.has(l.sessionId)).reduce((acc, l) => acc + (l.sessionLoad || 0), 0);
+    const dayRecords = loadRecords.filter(l => dayIds.has(l.sessionId) && (l.sessionLoad || 0) > 0);
+    const dayLoad = dayRecords.reduce((acc, l) => acc + (l.sessionLoad || 0), 0);
+    // Dividir entre jugadores que realmente tienen registro ese día (no entre toda la plantilla)
+    const uniquePlayersWithLoad = new Set(dayRecords.map(l => l.subjectId)).size;
     const dayWellness = wellnessReports.filter(w => w.date === d);
     const avgW = dayWellness.length ? dayWellness.reduce((acc, w) => acc + (w.fatigue + w.sleepQuality + w.muscleSoreness + w.stressLevel + w.mood) / 5, 0) / dayWellness.length : null;
     return {
       date: new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
-      load: Math.round(dayLoad / Math.max(players.length, 1)),
+      load: uniquePlayersWithLoad > 0 ? Math.round(dayLoad / uniquePlayersWithLoad) : 0,
       wellness: avgW ? parseFloat(avgW.toFixed(1)) : null,
     };
   });
@@ -3734,9 +4011,10 @@ const HealthView = ({
   }).filter(d => d.acwr !== null) as { name: string; acwr: number; load7: number }[];
 
   const getACWRColor = (v: number) => {
-    if (v < 0.8 || v > 1.5) return '#ef4444';
-    if (v >= 0.8 && v <= 1.3) return '#10b981';
-    return '#10b981';
+    if (v > 1.5) return '#ef4444';
+    if (v < 0.8) return '#3b82f6';
+    if (v <= 1.3) return '#10b981';
+    return '#eab308'; // 1.3–1.5 precaución
   };
 
   const handleSaveIncident = async () => {
@@ -3939,7 +4217,7 @@ const HealthView = ({
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className={cn("text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase border", incident.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20' : incident.status === 'monitoring' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{incident.status}</span>
                     {(incident.status === 'active' || incident.status === 'monitoring') && (
-                      <button onClick={() => { onUpdateIncident(incident.id, { status: 'recovered' }); showToast('success', `${player?.name}: marcado como recuperado`); }}
+                      <button onClick={() => { onUpdateIncident(incident.id, { status: 'recovered', recoveryDate: new Date().toISOString().split('T')[0] }); showToast('success', `${player?.name}: marcado como recuperado`); }}
                         className="text-[9px] font-bold text-emerald-400 hover:underline uppercase">
                         Marcar recuperado →
                       </button>
@@ -6543,7 +6821,7 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
 export default function App() {
   // ── App status ──
   const [appStatus, setAppStatus] = useState<'LOADING' | 'LOGIN' | 'TEAM_SELECT' | 'DASHBOARD' | 'PLAYER_DASHBOARD'>('LOADING');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('today');
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Subject | null>(null);
   const [viewingPlayerDetail, setViewingPlayerDetail] = useState(false);
@@ -6557,6 +6835,7 @@ export default function App() {
   const [isAddingTestDefinition, setIsAddingTestDefinition] = useState(false);
   const [testDefinitionForm, setTestDefinitionForm] = useState({ name: '', unit: '' });
   const [showRosterAttendance, setShowRosterAttendance] = useState(false);
+  const [todaySessionTarget, setTodaySessionTarget] = useState<Session | null>(null);
 
   // ── Data ──
   const [teams, setTeams] = useState<Team[]>([]);
@@ -7074,6 +7353,15 @@ export default function App() {
     }
 
     switch (activeTab) {
+      case 'today': return (
+        <TodayView
+          subjects={teamSubjects} incidents={incidents} matches={matches}
+          sessions={sessions} loadRecords={loadRecords} wellnessReports={wellnessReports}
+          attendanceRecords={attendanceRecords}
+          onNavigate={tab => { setActiveTab(tab); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
+          onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }}
+        />
+      );
       case 'dashboard': return (
         <DashboardView subjects={teamSubjects} incidents={incidents} matches={matches}
           wellnessReports={wellnessReports} sessions={sessions} onNavigate={setActiveTab} loadRecords={loadRecords} coachId={currentUser?.id} />
@@ -7099,7 +7387,9 @@ export default function App() {
           trainingSchedules={trainingSchedules}
           onAddSchedule={handleAddTrainingSchedule}
           onDeleteSchedule={handleDeleteTrainingSchedule}
-          onGenerateSessions={handleGenerateSessions} />
+          onGenerateSessions={handleGenerateSessions}
+          initialSession={todaySessionTarget}
+          onSessionOpened={() => setTodaySessionTarget(null)} />
       );
       case 'matches': return (
         <MatchesView matches={matches} onAddMatch={handleAddMatch} subjects={teamSubjects}

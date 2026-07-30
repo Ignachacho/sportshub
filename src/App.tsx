@@ -794,17 +794,12 @@ const Sidebar = ({
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button onClick={() => setMobileOpen(true)} className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-white shadow-lg">
-        <Menu size={18} />
-      </button>
-
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-56 bg-slate-900 border-r border-slate-800 h-screen fixed left-0 top-0 z-40 p-5 flex-col">
         <SidebarContent />
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer (triggered from bottom nav "Más") */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -812,12 +807,39 @@ const Sidebar = ({
               className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 lg:hidden"
               onClick={() => setMobileOpen(false)} />
             <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: 'spring', damping: 30 }}
-              className="fixed left-0 top-0 h-full w-56 bg-slate-900 border-r border-slate-800 z-50 p-5 flex flex-col lg:hidden shadow-2xl">
+              className="fixed left-0 top-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-50 p-5 flex flex-col lg:hidden shadow-2xl">
               <SidebarContent />
             </motion.aside>
           </>
         )}
       </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-stretch h-16">
+          {[
+            { id: 'dashboard',  label: 'Inicio',    icon: BarChart3 },
+            { id: 'roster',     label: 'Plantilla', icon: Users },
+            { id: 'sessions',   label: 'Sesiones',  icon: Timer },
+            { id: 'health',     label: 'Salud',     icon: HeartPulse },
+          ].map(item => (
+            <button key={item.id}
+              onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-95",
+                activeTab === item.id ? "text-emerald-400" : "text-slate-500 hover:text-slate-300"
+              )}>
+              <item.icon size={22} />
+              <span className="text-[9px] font-bold uppercase tracking-wide">{item.label}</span>
+            </button>
+          ))}
+          <button onClick={() => setMobileOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-300 transition-all active:scale-95">
+            <Menu size={22} />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Más</span>
+          </button>
+        </div>
+      </nav>
     </>
   );
 };
@@ -3363,7 +3385,38 @@ const DashboardView = ({
               <Zap size={11} /> RPE post-sesión
             </button>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile: card list */}
+          <div className="md:hidden divide-y divide-slate-800/50">
+            {playerACWR.map(({ player, acwr, load7, hasIncident }) => {
+              const ac = acwr !== null ? acwrColor(acwr) : null;
+              const displayName = player.lastName || player.name;
+              return (
+                <div key={player.id} className="flex items-center gap-3 px-4 py-3.5 active:bg-slate-800/30 transition-colors">
+                  <span className="text-xs font-black text-slate-500 font-mono w-9 shrink-0 text-center">
+                    {player.number !== undefined && player.number !== '' ? `#${player.number}` : '—'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-white truncate">{displayName}</span>
+                      {hasIncident && <AlertCircle size={13} className="text-red-400 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-slate-600 font-mono">{load7 > 0 ? `${load7} AU · 7d` : 'Sin carga registrada'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {ac ? (
+                      <>
+                        <span className={cn("text-sm font-black tabular-nums", ac.text)}>{acwr!.toFixed(2)}</span>
+                        <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg uppercase border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
+                      </>
+                    ) : <span className="text-xs text-slate-700">—</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: full table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
                 <tr>
@@ -3376,10 +3429,13 @@ const DashboardView = ({
               <tbody className="divide-y divide-slate-800/50">
                 {playerACWR.map(({ player, acwr, load7, hasIncident }) => {
                   const ac = acwr !== null ? acwrColor(acwr) : null;
+                  const displayName = player.lastName || player.name;
                   return (
                     <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
-                      <td className="px-6 py-3 text-[10px] font-mono text-slate-600">#{player.number}</td>
-                      <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{player.name}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
+                      <td className="px-6 py-3 text-[10px] font-mono text-slate-600">
+                        {player.number !== undefined && player.number !== '' ? `#${player.number}` : '—'}
+                      </td>
+                      <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{displayName}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
                       <td className="px-6 py-3 text-center text-[10px] text-slate-400 font-mono">{load7 > 0 ? `${load7} AU` : '—'}</td>
                       <td className="px-6 py-3 text-center">
                         {acwr !== null ? (
@@ -7086,7 +7142,7 @@ export default function App() {
       <Sidebar activeTab={activeTab} setActiveTab={t => { setActiveTab(t); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
         activeTeam={activeTeam} onSwitchTeam={handleSwitchTeam} onLogout={handleLogout} currentUser={currentUser} />
 
-      <main className="lg:ml-56 p-5 lg:p-10 min-h-screen">
+      <main className="lg:ml-56 p-5 lg:p-10 min-h-screen pb-24 lg:pb-10">
         <div className="max-w-6xl mx-auto">
           <Header
             title={viewingPlayerDetail ? 'roster' : showRosterAttendance ? 'roster' : activeTab}

@@ -3541,13 +3541,14 @@ const OverviewView = ({
     const activeIncidents = data.incidents.filter(i => i.status === 'active');
     const monitoringIncidents = data.incidents.filter(i => i.status === 'monitoring');
 
-    // Session status
+    // Session status — con detalle de qué falta
     const sessionInfo = todaySessions.map(s => {
-      const att = data.attendanceRecords.filter(a => a.sessionId === s.id);
+      const att  = data.attendanceRecords.filter(a => a.sessionId === s.id);
       const load = data.loadRecords.filter(l => l.sessionId === s.id && (l.sessionLoad || 0) > 0);
-      const status = att.length > 0 && load.length > 0 ? 'done'
-        : att.length > 0 || load.length > 0 ? 'partial' : 'pending';
-      return { session: s, status };
+      const hasAtt = att.length > 0;
+      const hasRPE = load.length > 0;
+      const status = hasAtt && hasRPE ? 'done' : hasAtt || hasRPE ? 'partial' : 'pending';
+      return { session: s, status, missingAtt: !hasAtt, missingRPE: !hasRPE };
     });
 
     // ACWR alerts
@@ -3569,7 +3570,29 @@ const OverviewView = ({
     if (redZone.length > 0 || activeIncidents.length > 0) light = 'red';
     else if (warnZone.length > 0 || hasPending || monitoringIncidents.length > 0) light = 'yellow';
 
-    return { team, ready: true, players, todaySessions, sessionInfo, activeIncidents, monitoringIncidents, redZone, warnZone, nextMatch, daysToMatch, light };
+    // Razones concretas de alerta (para mostrar al usuario)
+    const alertReasons: string[] = [];
+    if (activeIncidents.length > 0)
+      alertReasons.push(`${activeIncidents.length} lesionado${activeIncidents.length > 1 ? 's' : ''} activo${activeIncidents.length > 1 ? 's' : ''}`);
+    if (redZone.length > 0)
+      alertReasons.push(`${redZone.length} jugador${redZone.length > 1 ? 'es' : ''} con ACWR en riesgo (>${1.5})`);
+    if (warnZone.length > 0)
+      alertReasons.push(`${warnZone.length} jugador${warnZone.length > 1 ? 'es' : ''} con carga elevada`);
+    if (monitoringIncidents.length > 0)
+      alertReasons.push(`${monitoringIncidents.length} en seguimiento médico`);
+    sessionInfo.forEach(({ session, status, missingAtt, missingRPE }) => {
+      const title = session.title || 'Entrenamiento';
+      if (status === 'pending') {
+        alertReasons.push(`"${title}" sin lista ni RPE`);
+      } else if (status === 'partial') {
+        const missing: string[] = [];
+        if (missingAtt) missing.push('lista de asistencia');
+        if (missingRPE) missing.push('RPE');
+        alertReasons.push(`"${title}": falta ${missing.join(' y ')}`);
+      }
+    });
+
+    return { team, ready: true, players, todaySessions, sessionInfo, activeIncidents, monitoringIncidents, redZone, warnZone, nextMatch, daysToMatch, light, alertReasons };
   });
 
   const lightStyle = {
@@ -3642,30 +3665,34 @@ const OverviewView = ({
                 card.light === 'red' ? 'border-red-500/30' : card.light === 'yellow' ? 'border-yellow-500/20' : 'border-slate-800'
               )}>
               {/* Card header */}
-              <div className="px-6 py-4 flex items-start justify-between border-b border-slate-800/60">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5 mb-1">
+              <div className="px-6 py-4 border-b border-slate-800/60">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className={cn("w-2 h-2 rounded-full shrink-0", ls.dot)} />
                     <h3 className="font-black text-white text-base truncate">{card.team.name}</h3>
+                    <span className="text-[10px] text-slate-500 shrink-0">{card.players!.length} jugadores</span>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                    <span>{card.players!.length} jugadores</span>
-                    {card.activeIncidents!.length > 0 && (
-                      <span className="text-red-400 font-bold flex items-center gap-1">
-                        <AlertCircle size={10} /> {card.activeIncidents!.length} lesionado{card.activeIncidents!.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {card.monitoringIncidents!.length > 0 && (
-                      <span className="text-yellow-400 font-bold">{card.monitoringIncidents!.length} en seguimiento</span>
-                    )}
-                  </div>
+                  <span className={cn("text-[9px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-wide border shrink-0",
+                    card.light === 'red' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
+                    card.light === 'yellow' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/25' :
+                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/25')}>
+                    {ls.label}
+                  </span>
                 </div>
-                <span className={cn("text-[9px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-wide border shrink-0",
-                  card.light === 'red' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
-                  card.light === 'yellow' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/25' :
-                  'bg-emerald-500/10 text-emerald-400 border-emerald-500/25')}>
-                  {ls.label}
-                </span>
+                {/* Razones de alerta — visibles directamente */}
+                {card.alertReasons && card.alertReasons.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {card.alertReasons!.map((reason, i) => (
+                      <div key={i} className={cn(
+                        'flex items-center gap-1.5 text-[10px] font-bold',
+                        card.light === 'red' ? 'text-red-400' : 'text-yellow-400'
+                      )}>
+                        <span>{card.light === 'red' ? '⚡' : '⚠'}</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Card body */}
@@ -3674,12 +3701,14 @@ const OverviewView = ({
                 {/* Today's sessions */}
                 {todaySessions.length > 0 ? (
                   <div className="space-y-2">
-                    {sessionInfo.map(({ session, status }) => {
+                    {sessionInfo.map(({ session, status, missingAtt, missingRPE }) => {
                       const col = stc(session.type);
+                      // Label dinámico para "Parcial": dice qué falta exactamente
+                      const partialMissing = [missingAtt && 'Lista', missingRPE && 'RPE'].filter(Boolean).join(' + ');
                       const statusCfg = {
-                        done:    { label: '✓ Cerrada',  cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25' },
-                        partial: { label: '◑ Parcial',  cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25' },
-                        pending: { label: '○ Pendiente',cls: 'text-slate-500 bg-slate-800 border-slate-700' },
+                        done:    { label: '✓ Cerrada',                      cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25' },
+                        partial: { label: `◑ Falta ${partialMissing}`,      cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25' },
+                        pending: { label: '○ Sin datos',                    cls: 'text-slate-500 bg-slate-800 border-slate-700' },
                       }[status];
                       return (
                         <div key={session.id} className="flex items-center justify-between gap-3">
@@ -3690,7 +3719,7 @@ const OverviewView = ({
                             <span className="text-sm font-bold text-white truncate">{session.title || 'Sesión'}</span>
                             <span className="text-[9px] text-slate-600">{session.durationMins}min</span>
                           </div>
-                          <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border shrink-0', statusCfg.cls)}>
+                          <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border shrink-0 whitespace-nowrap', statusCfg.cls)}>
                             {statusCfg.label}
                           </span>
                         </div>

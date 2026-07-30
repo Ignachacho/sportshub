@@ -3389,11 +3389,11 @@ const DashboardView = ({
           <div className="md:hidden divide-y divide-slate-800/50">
             {playerACWR.map(({ player, acwr, load7, hasIncident }) => {
               const ac = acwr !== null ? acwrColor(acwr) : null;
-              const displayName = player.lastName || player.name;
+              const displayName = `${player.name}${player.lastName ? ' ' + player.lastName : ''}`;
               return (
                 <div key={player.id} className="flex items-center gap-3 px-4 py-3.5 active:bg-slate-800/30 transition-colors">
-                  <span className="text-xs font-black text-slate-500 font-mono w-9 shrink-0 text-center">
-                    {player.number !== undefined && player.number !== '' ? `#${player.number}` : '—'}
+                  <span className="text-sm font-black text-white font-mono bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5 shrink-0">
+                    {player.number !== undefined && player.number !== null && player.number !== '' ? `#${player.number}` : '—'}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -3429,11 +3429,13 @@ const DashboardView = ({
               <tbody className="divide-y divide-slate-800/50">
                 {playerACWR.map(({ player, acwr, load7, hasIncident }) => {
                   const ac = acwr !== null ? acwrColor(acwr) : null;
-                  const displayName = player.lastName || player.name;
+                  const displayName = `${player.name}${player.lastName ? ' ' + player.lastName : ''}`;
                   return (
                     <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
-                      <td className="px-6 py-3 text-[10px] font-mono text-slate-600">
-                        {player.number !== undefined && player.number !== '' ? `#${player.number}` : '—'}
+                      <td className="px-6 py-3">
+                        <span className="text-sm font-black text-white font-mono bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5">
+                          {player.number !== undefined && player.number !== null && player.number !== '' ? `#${player.number}` : '—'}
+                        </span>
                       </td>
                       <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{displayName}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
                       <td className="px-6 py-3 text-center text-[10px] text-slate-400 font-mono">{load7 > 0 ? `${load7} AU` : '—'}</td>

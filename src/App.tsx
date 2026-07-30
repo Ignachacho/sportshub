@@ -35,7 +35,7 @@ import {
   Info, CheckCircle, Clock, MapPin, Zap, Target, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
-  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical
+  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -742,11 +742,12 @@ const NAV_ITEMS = [
 ];
 
 const Sidebar = ({
-  activeTab, setActiveTab, activeTeam, onSwitchTeam, onLogout, currentUser
+  activeTab, setActiveTab, activeTeam, onSwitchTeam, onLogout, currentUser, notifCount
 }: {
   activeTab: string; setActiveTab: (t: string) => void;
   activeTeam: Team | null; onSwitchTeam: () => void;
   onLogout: () => void; currentUser: any;
+  notifCount?: number;
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -789,7 +790,14 @@ const Sidebar = ({
                 ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
                 : "text-slate-400 hover:text-white hover:bg-slate-800"
             )}>
-            <item.icon size={16} />
+            <div className="relative">
+              <item.icon size={16} />
+              {item.id === 'today' && notifCount && notifCount > 0 ? (
+                <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] font-black text-white flex items-center justify-center shadow-sm">
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              ) : null}
+            </div>
             {item.label}
           </button>
         ))}
@@ -850,7 +858,14 @@ const Sidebar = ({
                 "flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-95",
                 activeTab === item.id ? "text-emerald-400" : "text-slate-500 hover:text-slate-300"
               )}>
-              <item.icon size={22} />
+              <div className="relative">
+                <item.icon size={22} />
+                {item.id === 'today' && notifCount && notifCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center shadow">
+                    {notifCount > 9 ? '9+' : notifCount}
+                  </span>
+                ) : null}
+              </div>
               <span className="text-[9px] font-bold uppercase tracking-wide">{item.label}</span>
             </button>
           ))}
@@ -2782,6 +2797,11 @@ const SessionWorkspaceView = ({
   const [annotations, setAnnotations] = useState(initA);
   const [material, setMaterial] = useState(initM);
   const [savingNotes, setSavingNotes] = useState(false);
+  // View / edit mode toggle for anotaciones + material
+  const [annotationsEditMode, setAnnotationsEditMode] = useState(!initA.trim());
+  const [materialEditMode, setMaterialEditMode] = useState(!initM.trim());
+  // Plan modal
+  const [planOpen, setPlanOpen] = useState(false);
 
   // zone/phase are read-only in workspace (edit via session form)
   const zoneInfo = METABOLIC_ZONES.find(z => z.id === initZone);
@@ -2861,26 +2881,114 @@ const SessionWorkspaceView = ({
                 <h3 className="font-black text-white flex items-center gap-2">
                   <FileText size={16} className="text-emerald-500" /> Anotaciones del entrenador
                 </h3>
-                <span className="text-[9px] text-slate-600 font-mono">{annotations.length} car.</span>
+                <button
+                  onClick={() => setAnnotationsEditMode(v => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wide border transition-all",
+                    annotationsEditMode
+                      ? "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700"
+                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                  )}
+                >
+                  {annotationsEditMode ? <><X size={10} /> Cancelar</> : <><Edit2 size={10} /> Editar</>}
+                </button>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Ausencias previstas, conceptos a trabajar, mensajes al grupo, observaciones del último entrenamiento...
-              </p>
-              <textarea
-                value={annotations} onChange={e => setAnnotations(e.target.value)}
-                rows={9}
-                placeholder={"Ej: No viene Carlos (lesión). Trabajar defensa de zona 2-3.\nIntroducir bloqueo directo en ataque estático.\nGrupo cansado — reducir intensidad del físico..."}
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
-              />
-              <button onClick={saveContent} disabled={savingNotes}
-                className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
-                {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar anotaciones</>}
-              </button>
+
+              {annotationsEditMode ? (
+                <>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Ausencias previstas, conceptos a trabajar, mensajes al grupo, observaciones del último entrenamiento...
+                  </p>
+                  <textarea
+                    value={annotations} onChange={e => setAnnotations(e.target.value)}
+                    rows={9}
+                    placeholder={"Ej: No viene Carlos (lesión). Trabajar defensa de zona 2-3.\nIntroducir bloqueo directo en ataque estático.\nGrupo cansado — reducir intensidad del físico..."}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
+                  />
+                  <button onClick={async () => { await saveContent(); setAnnotationsEditMode(false); }} disabled={savingNotes}
+                    className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
+                    {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar anotaciones</>}
+                  </button>
+                </>
+              ) : annotations.trim() ? (
+                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl px-5 py-4 space-y-1">
+                  {annotations.split('\n').map((line, i) => (
+                    line.trim()
+                      ? <p key={i} className="text-sm text-slate-200 leading-relaxed">{line}</p>
+                      : <div key={i} className="h-2" />
+                  ))}
+                </div>
+              ) : (
+                <div className="py-10 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+                  <FileText className="mx-auto text-slate-800 mb-3" size={28} />
+                  <p className="text-slate-600 text-sm">Sin anotaciones</p>
+                  <button onClick={() => setAnnotationsEditMode(true)} className="mt-2 text-xs text-emerald-500 font-bold hover:underline uppercase">
+                    Añadir anotaciones →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'plan' && (
-            <SessionPlanTool session={session} subjects={subjects} onClose={() => setActiveTab('anotaciones')} showToast={showToast} />
+            <>
+              {planOpen && (
+                <SessionPlanTool session={session} subjects={subjects} onClose={() => setPlanOpen(false)} showToast={showToast} />
+              )}
+              {!planOpen && (
+                <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-black text-white flex items-center gap-2">
+                      <ClipboardList size={16} className="text-emerald-500" /> Plan de sesión
+                    </h3>
+                    <button
+                      onClick={() => setPlanOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wide border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                    >
+                      <Edit2 size={10} /> Editar plan
+                    </button>
+                  </div>
+                  {/* Plan summary: zona metabólica, fase, duración total */}
+                  <div className="flex flex-wrap gap-2">
+                    {zoneInfo && (
+                      <span className={cn('text-[8px] font-black px-2.5 py-1.5 rounded-xl border uppercase', zoneInfo.color.badge, zoneInfo.color.border)}>
+                        ⚡ {zoneInfo.label}
+                      </span>
+                    )}
+                    {phaseInfo && (
+                      <span className={cn('text-[8px] font-black px-2.5 py-1.5 rounded-xl border bg-slate-800/60 border-slate-700/50', phaseInfo.color)}>
+                        📅 {phaseInfo.label}
+                      </span>
+                    )}
+                    <span className="text-[8px] font-black px-2.5 py-1.5 rounded-xl border bg-slate-800 border-slate-700 text-slate-400">
+                      ⏱ {session.durationMins} min planificados
+                    </span>
+                  </div>
+                  {/* Notes/annotations as plan description */}
+                  {annotations.trim() ? (
+                    <div className="bg-slate-950/60 border border-slate-800 rounded-2xl px-5 py-4 space-y-1">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Anotaciones del plan</p>
+                      {annotations.split('\n').slice(0, 5).map((line, i) => (
+                        line.trim()
+                          ? <p key={i} className="text-sm text-slate-300 leading-relaxed">{line}</p>
+                          : <div key={i} className="h-1" />
+                      ))}
+                      {annotations.split('\n').length > 5 && (
+                        <p className="text-[9px] text-slate-600 mt-2">+ {annotations.split('\n').length - 5} líneas más</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+                      <ClipboardList className="mx-auto text-slate-800 mb-3" size={28} />
+                      <p className="text-slate-600 text-sm">Sin plan de ejercicios</p>
+                      <button onClick={() => setPlanOpen(true)} className="mt-2 text-xs text-emerald-500 font-bold hover:underline uppercase">
+                        Crear plan →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'lista' && (
@@ -2889,20 +2997,39 @@ const SessionWorkspaceView = ({
 
           {activeTab === 'material' && (
             <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-4">
-              <h3 className="font-black text-white flex items-center gap-2">
-                <Dumbbell size={16} className="text-emerald-500" /> Material necesario
-              </h3>
-              <p className="text-xs text-slate-500">Un ítem por línea. Puedes indicar cantidad, color o referencia.</p>
-              <textarea
-                value={material} onChange={e => setMaterial(e.target.value)}
-                rows={8}
-                placeholder={"Ej:\n10 balones de baloncesto\n4 conos (azules)\n2 petos por equipo (rojo y azul)\nPizarra táctica\nCronómetro"}
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
-              />
-              {/* Formatted list preview */}
-              {material.trim() && (
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-white flex items-center gap-2">
+                  <Dumbbell size={16} className="text-emerald-500" /> Material necesario
+                </h3>
+                <button
+                  onClick={() => setMaterialEditMode(v => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wide border transition-all",
+                    materialEditMode
+                      ? "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700"
+                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                  )}
+                >
+                  {materialEditMode ? <><X size={10} /> Cancelar</> : <><Edit2 size={10} /> Editar</>}
+                </button>
+              </div>
+
+              {materialEditMode ? (
+                <>
+                  <p className="text-xs text-slate-500">Un ítem por línea. Puedes indicar cantidad, color o referencia.</p>
+                  <textarea
+                    value={material} onChange={e => setMaterial(e.target.value)}
+                    rows={8}
+                    placeholder={"Ej:\n10 balones de baloncesto\n4 conos (azules)\n2 petos por equipo (rojo y azul)\nPizarra táctica\nCronómetro"}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-emerald-500/50 resize-none font-mono leading-relaxed placeholder:text-slate-700"
+                  />
+                  <button onClick={async () => { await saveContent(); setMaterialEditMode(false); }} disabled={savingNotes}
+                    className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
+                    {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar material</>}
+                  </button>
+                </>
+              ) : material.trim() ? (
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-2">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3">Vista previa — lista de material</p>
                   {material.split('\n').filter(l => l.trim()).map((item, i) => (
                     <div key={i} className="flex items-center gap-3 py-1.5 border-b border-slate-800/40 last:border-0">
                       <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[9px] font-black text-emerald-500 shrink-0">{i + 1}</div>
@@ -2910,11 +3037,15 @@ const SessionWorkspaceView = ({
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="py-10 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+                  <Dumbbell className="mx-auto text-slate-800 mb-3" size={28} />
+                  <p className="text-slate-600 text-sm">Sin material registrado</p>
+                  <button onClick={() => setMaterialEditMode(true)} className="mt-2 text-xs text-emerald-500 font-bold hover:underline uppercase">
+                    Añadir material →
+                  </button>
+                </div>
               )}
-              <button onClick={saveContent} disabled={savingNotes}
-                className="flex items-center gap-2 px-5 py-3 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20">
-                {savingNotes ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : <><Save size={12} /> Guardar material</>}
-              </button>
             </div>
           )}
         </motion.div>
@@ -3300,6 +3431,60 @@ const TodayView = ({
 
   const totalAlerts = activeIncidents.length + acwrAlerts.filter(a => (a.acwr || 0) > 1.5).length;
 
+  // ── Notificaciones proactivas ──────────────────────────────────────────────
+  type Notif = { id: string; type: 'warning' | 'info' | 'danger'; msg: string; detail?: string; action: string; actionLabel: string };
+  const notifications: Notif[] = [];
+
+  // 1. Sesiones de los últimos 2 días sin RPE registrado
+  const recentUnrecordedSessions = sessions.filter(s => {
+    const d = s.date?.toString().split('T')[0];
+    if (!d || d >= today) return false;                          // sólo pasadas
+    const daysDiff = Math.round((new Date(today).getTime() - new Date(d).getTime()) / 86400000);
+    if (daysDiff > 2) return false;                             // máx 2 días atrás
+    const hasRpe = loadRecords.some(l => l.sessionId === s.id && (l.sessionLoad || 0) > 0);
+    return !hasRpe;
+  });
+  if (recentUnrecordedSessions.length > 0) {
+    const plural = recentUnrecordedSessions.length > 1;
+    notifications.push({
+      id: 'missing_rpe',
+      type: 'warning',
+      msg: plural ? `${recentUnrecordedSessions.length} sesiones sin RPE` : `"${recentUnrecordedSessions[0].title || 'Sesión'}" sin RPE`,
+      detail: plural ? 'Registra el RPE post-sesión para calcular carga y ACWR' : `Sesión del ${new Date(recentUnrecordedSessions[0].date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })} sin RPE`,
+      action: 'sessions',
+      actionLabel: 'Ir a Sesiones →',
+    });
+  }
+
+  // 2. Jugadores en zona roja ACWR > 1.5
+  const redZonePlayers = acwrAlerts.filter(a => (a.acwr || 0) > 1.5);
+  if (redZonePlayers.length > 0) {
+    notifications.push({
+      id: 'acwr_red',
+      type: 'danger',
+      msg: redZonePlayers.length === 1
+        ? `${redZonePlayers[0].player.name} en zona roja (ACWR ${redZonePlayers[0].acwr?.toFixed(2)})`
+        : `${redZonePlayers.length} jugadores en zona roja de ACWR`,
+      detail: 'Riesgo elevado de lesión. Considera reducir carga hoy.',
+      action: 'health',
+      actionLabel: 'Ver Salud →',
+    });
+  }
+
+  // 3. Partido en ≤ 2 días sin comprobar disponibilidad
+  if (nextMatch && daysToMatch !== null && daysToMatch <= 2) {
+    notifications.push({
+      id: 'match_soon',
+      type: 'info',
+      msg: daysToMatch === 0
+        ? `Partido hoy vs ${nextMatch.opponent}`
+        : `Partido en ${daysToMatch} día${daysToMatch > 1 ? 's' : ''} vs ${nextMatch.opponent}`,
+      detail: activeIncidents.length > 0 ? `${activeIncidents.length} jugadores lesionados — revisa disponibilidad` : 'Revisa el tapering y disponibilidad',
+      action: 'matches',
+      actionLabel: 'Ver Partidos →',
+    });
+  }
+
   return (
     <div className="space-y-5">
       {/* Header saludo */}
@@ -3344,6 +3529,44 @@ const TodayView = ({
         </div>
         <h2 className="text-2xl font-black text-white capitalize mt-0.5">{dayLabel}</h2>
       </div>
+
+      {/* NOTIFICACIONES PROACTIVAS */}
+      {notifications.length > 0 && (
+        <div className="space-y-2">
+          {notifications.map(n => (
+            <div key={n.id} className={cn(
+              "flex items-start gap-3 px-4 py-3 rounded-2xl border",
+              n.type === 'danger'  ? 'bg-red-500/8    border-red-500/25   ' :
+              n.type === 'warning' ? 'bg-yellow-500/8 border-yellow-500/25' :
+                                     'bg-blue-500/8   border-blue-500/25  '
+            )}>
+              <div className={cn(
+                "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                n.type === 'danger'  ? 'bg-red-500/20'    :
+                n.type === 'warning' ? 'bg-yellow-500/20' : 'bg-blue-500/20'
+              )}>
+                {n.type === 'danger'  ? <AlertTriangle size={12} className="text-red-400"    /> :
+                 n.type === 'warning' ? <AlertTriangle size={12} className="text-yellow-400" /> :
+                                        <Calendar      size={12} className="text-blue-400"   />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn("text-xs font-black leading-tight",
+                  n.type === 'danger'  ? 'text-red-300'    :
+                  n.type === 'warning' ? 'text-yellow-300' : 'text-blue-300'
+                )}>{n.msg}</p>
+                {n.detail && <p className="text-[10px] text-slate-500 mt-0.5">{n.detail}</p>}
+              </div>
+              <button onClick={() => onNavigate(n.action)}
+                className={cn("text-[9px] font-black uppercase tracking-wide shrink-0 mt-0.5",
+                  n.type === 'danger'  ? 'text-red-400'    :
+                  n.type === 'warning' ? 'text-yellow-400' : 'text-blue-400'
+                )}>
+                {n.actionLabel}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* SESIÓN DE HOY */}
       <div className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
@@ -7808,10 +8031,38 @@ export default function App() {
     }
   };
 
+  // ── Notif count para badge del nav "Hoy" ──────────────────────────────────
+  const appNotifCount = (() => {
+    const todayStr = localDateStr(new Date());
+    let count = 0;
+    // Sesiones pasadas (1-2 días) sin RPE
+    sessions.forEach(s => {
+      const d = s.date?.toString().split('T')[0];
+      if (!d || d >= todayStr) return;
+      const diff = Math.round((new Date(todayStr).getTime() - new Date(d).getTime()) / 86400000);
+      if (diff > 2) return;
+      if (!loadRecords.some(l => l.sessionId === s.id && (l.sessionLoad || 0) > 0)) count++;
+    });
+    // Jugadores en zona roja ACWR > 1.5
+    const players = teamSubjects.filter(s => s.role === Role.PLAYER);
+    players.forEach(p => {
+      const a = calculateACWR(loadRecords, sessions, p.id);
+      if (a !== null && a > 1.5) count++;
+    });
+    // Partido en ≤ 2 días
+    const nextM = matches.filter(m => m.status === 'SCHEDULED' && m.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (nextM) {
+      const diff = Math.ceil((new Date(nextM.date).getTime() - Date.now()) / 86400000);
+      if (diff <= 2) count++;
+    }
+    return count;
+  })();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-emerald-500/30">
       <Sidebar activeTab={activeTab} setActiveTab={t => { setActiveTab(t); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
-        activeTeam={activeTeam} onSwitchTeam={handleSwitchTeam} onLogout={handleLogout} currentUser={currentUser} />
+        activeTeam={activeTeam} onSwitchTeam={handleSwitchTeam} onLogout={handleLogout} currentUser={currentUser}
+        notifCount={appNotifCount} />
 
       <main className="lg:ml-56 p-5 lg:p-10 min-h-screen pb-24 lg:pb-10">
         <div className="max-w-6xl mx-auto">

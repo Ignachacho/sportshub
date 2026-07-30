@@ -52,7 +52,7 @@ export interface HealthIncident {
   subjectId: string;
   date: string;
   type: string;
-  status: 'active' | 'recovered' | 'treatment';
+  status: 'active' | 'recovered' | 'treatment' | 'monitoring';
   severity: 'low' | 'medium' | 'high';
   notes: string;
   recoveryDate?: string;
@@ -83,6 +83,8 @@ export interface Session {
   title: string;
   notes?: string;
   durationMins?: number;
+  /** ID del training_schedule que generó esta sesión (null si fue creada manualmente) */
+  scheduleId?: string;
 }
 
 export interface Metric {

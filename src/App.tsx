@@ -103,7 +103,8 @@ const mapAttendance = (a: any): AttendanceRecord => ({
 });
 const mapSession = (s: any): Session => ({
   id: s.id, teamId: s.team_id, date: s.date, type: s.type,
-  title: s.title, notes: s.notes, durationMins: s.duration_mins
+  title: s.title, notes: s.notes, durationMins: s.duration_mins,
+  scheduleId: s.schedule_id ?? undefined,
 });
 
 // Training schedule type (no está en types.ts, la definimos aquí)
@@ -1130,16 +1131,23 @@ const WellnessTestView = ({
 type DrillBlock = { id: string; phase: string; name: string; duration: number; players: string; notes: string; tasks: string[] };
 
 const SessionPlanTool = ({
-  session, subjects, onClose, showToast
+  session, subjects, initialBlocks, initialObjective, onSave, onClose, showToast
 }: {
-  session: Session; subjects: Subject[]; onClose: () => void; showToast: (t: ToastType, m: string) => void;
+  session: Session; subjects: Subject[];
+  initialBlocks?: DrillBlock[];
+  initialObjective?: string;
+  onSave: (blocks: DrillBlock[], objective: string) => Promise<void>;
+  onClose: () => void;
+  showToast: (t: ToastType, m: string) => void;
 }) => {
-  const [blocks, setBlocks] = useState<DrillBlock[]>([
+  const DEFAULT_BLOCKS: DrillBlock[] = [
     { id: '1', phase: 'Calentamiento', name: '', duration: 10, players: 'Todos', notes: '', tasks: [] },
     { id: '2', phase: 'Bloque Principal', name: '', duration: 30, players: 'Todos', notes: '', tasks: [''] },
     { id: '3', phase: 'Vuelta a la Calma', name: '', duration: 10, players: 'Todos', notes: '', tasks: [] },
-  ]);
-  const [objective, setObjective] = useState('');
+  ];
+  const [blocks, setBlocks] = useState<DrillBlock[]>(initialBlocks?.length ? initialBlocks : DEFAULT_BLOCKS);
+  const [objective, setObjective] = useState(initialObjective ?? '');
+  const [saving, setSaving] = useState(false);
 
   const taskInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -1371,9 +1379,10 @@ const SessionPlanTool = ({
           </button>
 
           <div className="flex gap-3 pt-2">
-            <button onClick={() => { showToast('success', `Plan de "${session.title}" guardado localmente`); onClose(); }}
-              className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
-              <Save size={14} /> Guardar Plan
+            <button onClick={async () => { setSaving(true); try { await onSave(blocks, objective); } catch { showToast('error', 'Error al guardar el plan'); } finally { setSaving(false); } }}
+              disabled={saving}
+              className="flex-1 bg-emerald-500 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-60">
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : <><Save size={14} /> Guardar Plan</>}
             </button>
             <button onClick={onClose} className="flex-1 bg-slate-800 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-700 hover:bg-slate-700 transition-all">Cerrar</button>
           </div>
@@ -2076,12 +2085,61 @@ const INJURY_PREVENTION = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// RECURRING ACTION DIALOG — tipo Google Calendar
+// ─────────────────────────────────────────────────────────────────────────────
+const RecurringActionDialog = ({
+  mode, onSelect, onCancel
+}: {
+  mode: 'delete' | 'edit';
+  onSelect: (scope: 'this' | 'future' | 'all') => void;
+  onCancel: () => void;
+}) => {
+  const options: { scope: 'this' | 'future' | 'all'; label: string; desc: string }[] = [
+    { scope: 'this',   label: 'Solo este evento',       desc: 'Solo se modifica este evento recurrente' },
+    { scope: 'future', label: 'Este y los siguientes',  desc: 'Se modifica este y todos los eventos futuros de la serie' },
+    { scope: 'all',    label: 'Todos los eventos',      desc: 'Se modifica cada evento de esta serie recurrente' },
+  ];
+  const verb = mode === 'delete' ? 'eliminar' : 'editar';
+  const color = mode === 'delete' ? 'red' : 'blue';
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={onCancel}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-slate-900 border border-slate-700 rounded-[24px] w-full max-w-sm p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mode === 'delete' ? 'bg-red-500/10 border border-red-500/20' : 'bg-blue-500/10 border border-blue-500/20'}`}>
+            {mode === 'delete' ? <Trash2 size={18} className="text-red-400" /> : <Edit2 size={18} className="text-blue-400" />}
+          </div>
+          <div>
+            <p className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Evento recurrente</p>
+            <h3 className="font-black text-white">¿Qué quieres {verb}?</h3>
+          </div>
+        </div>
+        <div className="space-y-2 mb-5">
+          {options.map(opt => (
+            <button key={opt.scope} onClick={() => onSelect(opt.scope)}
+              className="w-full text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl px-4 py-3 transition-all group">
+              <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{opt.label}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} className="w-full py-2.5 rounded-xl border border-slate-700 text-sm text-slate-400 hover:text-white hover:border-slate-600 transition-all">
+          Cancelar
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 const TrainingScheduleManager = ({
-  schedules, onAdd, onDelete, onGenerate, onClose, showToast
+  schedules, onAdd, onDelete, onUpdate, onGenerate, onClose, showToast
 }: {
   schedules: TrainingSchedule[];
   onAdd: (s: Partial<TrainingSchedule>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpdate: (id: string, data: Partial<TrainingSchedule>) => Promise<void>;
   onGenerate: (dateFrom: string, dateTo: string) => Promise<void>;
   onClose: () => void;
   showToast: (t: ToastType, m: string) => void;
@@ -2093,8 +2151,23 @@ const TrainingScheduleManager = ({
   const [dateTo, setDateTo] = useState(in8weeks.toISOString().split('T')[0]);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editScheduleForm, setEditScheduleForm] = useState({ dayOfWeek: 1, startTime: '18:00', endTime: '20:00', sessionType: 'TRAINING', title: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
   const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const TYPE_LABELS: Record<string, string> = { TRAINING: 'Entrenamiento', PHYSICAL: 'Físico', MATCH: 'Partido', OTHER: 'Otro' };
+
+  const openEditSchedule = (s: TrainingSchedule) => {
+    setEditingScheduleId(s.id);
+    setEditScheduleForm({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime, sessionType: s.sessionType, title: s.title || '' });
+  };
+  const handleSaveEditSchedule = async () => {
+    if (!editingScheduleId) return;
+    setSavingEdit(true);
+    try { await onUpdate(editingScheduleId, editScheduleForm); showToast('success', 'Franja actualizada'); setEditingScheduleId(null); }
+    catch { showToast('error', 'Error al actualizar la franja'); }
+    finally { setSavingEdit(false); }
+  };
 
   // Count how many sessions would be generated
   const estimatedCount = useMemo(() => {
@@ -2146,17 +2219,56 @@ const TrainingScheduleManager = ({
               No hay horarios configurados
             </div>
           ) : schedules.filter(s => s.active).sort((a, b) => a.dayOfWeek - b.dayOfWeek).map(s => (
-            <div key={s.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center shrink-0">
-                  <Timer size={13} className="text-emerald-400" />
+            <div key={s.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+              {editingScheduleId === s.id ? (
+                <div className="p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={editScheduleForm.dayOfWeek} onChange={e => setEditScheduleForm(f => ({ ...f, dayOfWeek: parseInt(e.target.value) }))}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
+                      {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    </select>
+                    <select value={editScheduleForm.sessionType} onChange={e => setEditScheduleForm(f => ({ ...f, sessionType: e.target.value }))}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
+                      <option value="TRAINING">Entrenamiento</option>
+                      <option value="PHYSICAL">Físico</option>
+                      <option value="OTHER">Otro</option>
+                    </select>
+                    <input type="time" value={editScheduleForm.startTime} onChange={e => setEditScheduleForm(f => ({ ...f, startTime: e.target.value }))}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none" />
+                    <input type="time" value={editScheduleForm.endTime} onChange={e => setEditScheduleForm(f => ({ ...f, endTime: e.target.value }))}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none" />
+                  </div>
+                  <input value={editScheduleForm.title} onChange={e => setEditScheduleForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Título (opcional)"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none" />
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveEditSchedule} disabled={savingEdit}
+                      className="flex-1 bg-emerald-500 text-slate-950 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                      {savingEdit ? 'Guardando...' : '✓ Guardar'}
+                    </button>
+                    <button onClick={() => setEditingScheduleId(null)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 text-[10px] hover:text-white transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{DAY_NAMES[s.dayOfWeek]} · {s.startTime}–{s.endTime}</p>
-                  <p className="text-[10px] text-slate-500">{s.title || TYPE_LABELS[s.sessionType] || s.sessionType}</p>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center shrink-0">
+                      <Timer size={13} className="text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{DAY_NAMES[s.dayOfWeek]} · {s.startTime}–{s.endTime}</p>
+                      <p className="text-[10px] text-slate-500">{s.title || TYPE_LABELS[s.sessionType] || s.sessionType}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEditSchedule(s)} className="text-slate-600 hover:text-blue-400 transition-colors p-1"><Edit2 size={13} /></button>
+                    <button onClick={() => onDelete(s.id)} className="text-slate-600 hover:text-red-400 transition-colors p-1"><X size={14} /></button>
+                  </div>
                 </div>
-              </div>
-              <button onClick={() => onDelete(s.id)} className="text-slate-600 hover:text-red-400 transition-colors p-1"><X size={14} /></button>
+              )}
             </div>
           ))}
         </div>
@@ -2242,13 +2354,17 @@ const TrainingScheduleManager = ({
 const SessionsView = ({
   sessions, onAddSession, onDeleteSession, onUpdateSession, subjects, teamId, onQuickAttendance,
   isAdding, setIsAdding, attendanceRecords, loadRecords, showToast,
-  trainingSchedules, onAddSchedule, onDeleteSchedule, onGenerateSessions,
+  trainingSchedules, onAddSchedule, onDeleteSchedule, onUpdateSchedule, onGenerateSessions,
+  onDeleteSessionWithScope, onUpdateSessionWithScope,
+  sessionPlans, onSaveSessionPlan,
   initialSession, onSessionOpened,
 }: {
   sessions: Session[];
   onAddSession: (s: Partial<Session>) => Promise<void>;
   onDeleteSession: (id: string) => Promise<void>;
   onUpdateSession: (id: string, data: Partial<Session>) => Promise<void>;
+  onDeleteSessionWithScope: (session: Session, scope: 'this' | 'future' | 'all') => Promise<void>;
+  onUpdateSessionWithScope: (session: Session, data: Partial<Session>, scope: 'this' | 'future' | 'all') => Promise<void>;
   subjects: Subject[];
   teamId?: string;
   onQuickAttendance: (a: Record<string, string>) => Promise<void>;
@@ -2260,7 +2376,10 @@ const SessionsView = ({
   trainingSchedules: TrainingSchedule[];
   onAddSchedule: (s: Partial<TrainingSchedule>) => Promise<void>;
   onDeleteSchedule: (id: string) => Promise<void>;
+  onUpdateSchedule: (id: string, data: Partial<TrainingSchedule>) => Promise<void>;
   onGenerateSessions: (dateFrom: string, dateTo: string) => Promise<void>;
+  sessionPlans: Record<string, { objective: string; blocks: DrillBlock[] }>;
+  onSaveSessionPlan: (sessionId: string, blocks: DrillBlock[], objective: string) => Promise<void>;
   initialSession?: Session | null;
   onSessionOpened?: () => void;
 }) => {
@@ -2278,6 +2397,8 @@ const SessionsView = ({
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  // Recurring scope dialog
+  const [recurringDialog, setRecurringDialog] = useState<{ mode: 'delete' | 'edit'; session: Session; pendingData?: Partial<Session> } | null>(null);
 
   // Si viene de la vista Hoy con una sesión preseleccionada, abrirla en pestaña "lista"
   useEffect(() => {
@@ -2358,25 +2479,35 @@ const SessionsView = ({
 
   const handleSaveEdit = async () => {
     if (!editingSession) return;
+    const combinedDate = editForm.startTime && editForm.startTime !== '00:00'
+      ? `${editForm.date}T${editForm.startTime}:00` : editForm.date;
+    const { material: existingMaterial } = parseSessionNotes(editingSession.notes || '');
+    const notesWithMeta = encodeSessionNotes(editForm.notes, existingMaterial, editForm.zone, editForm.phase);
+    const pendingData: Partial<Session> = { ...editForm, date: combinedDate, notes: notesWithMeta };
+    // Si es recurrente → preguntar scope
+    if (editingSession.scheduleId) {
+      setRecurringDialog({ mode: 'edit', session: editingSession, pendingData });
+      return;
+    }
     setSavingEdit(true);
     try {
-      const combinedDate = editForm.startTime && editForm.startTime !== '00:00'
-        ? `${editForm.date}T${editForm.startTime}:00` : editForm.date;
-      // Preserve material from original notes when editing
-      const { material: existingMaterial } = parseSessionNotes(editingSession.notes || '');
-      const notesWithMeta = encodeSessionNotes(editForm.notes, existingMaterial, editForm.zone, editForm.phase);
-      await onUpdateSession(editingSession.id, { ...editForm, date: combinedDate, notes: notesWithMeta });
+      await onUpdateSession(editingSession.id, pendingData);
       setEditingSession(null);
       showToast('success', 'Sesión actualizada');
     } catch { showToast('error', 'Error al actualizar la sesión'); }
     finally { setSavingEdit(false); }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (session: Session) => {
+    if (session.scheduleId) {
+      // Evento recurrente → dialog de scope
+      setRecurringDialog({ mode: 'delete', session });
+      return;
+    }
     if (!window.confirm('¿Borrar esta sesión? Esta acción no se puede deshacer.')) return;
-    setDeletingId(id);
+    setDeletingId(session.id);
     try {
-      await onDeleteSession(id);
+      await onDeleteSession(session.id);
       showToast('success', 'Sesión eliminada');
     } catch { showToast('error', 'Error al eliminar la sesión'); }
     finally { setDeletingId(null); }
@@ -2620,7 +2751,7 @@ const SessionsView = ({
                     className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-40" title="Duplicar a hoy">
                     {duplicatingId === session.id ? <Loader2 size={13} className="animate-spin" /> : <Copy size={13} />}
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(session.id); }} disabled={deletingId === session.id}
+                  <button onClick={e => { e.stopPropagation(); handleDelete(session); }} disabled={deletingId === session.id}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40" title="Borrar sesión">
                     {deletingId === session.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </button>
@@ -2661,6 +2792,8 @@ const SessionsView = ({
       loadRecords={loadRecords}
       onBack={() => { setSelectedSession(null); setSelectedSessionTab('anotaciones'); }}
       onUpdateSession={onUpdateSession}
+      sessionPlan={sessionPlans[selectedSession.id]}
+      onSaveSessionPlan={onSaveSessionPlan}
       showToast={showToast}
     />
   );
@@ -2900,9 +3033,39 @@ const SessionsView = ({
           schedules={trainingSchedules}
           onAdd={onAddSchedule}
           onDelete={onDeleteSchedule}
+          onUpdate={onUpdateSchedule}
           onGenerate={onGenerateSessions}
           onClose={() => setShowScheduleManager(false)}
           showToast={showToast}
+        />
+      )}
+
+      {/* Recurring scope dialog */}
+      {recurringDialog && (
+        <RecurringActionDialog
+          mode={recurringDialog.mode}
+          onCancel={() => setRecurringDialog(null)}
+          onSelect={async scope => {
+            const { mode, session, pendingData } = recurringDialog;
+            setRecurringDialog(null);
+            if (mode === 'delete') {
+              setDeletingId(session.id);
+              try {
+                await onDeleteSessionWithScope(session, scope);
+                setSelectedSession(null);
+                showToast('success', 'Sesión(es) eliminada(s)');
+              } catch { showToast('error', 'Error al eliminar'); }
+              finally { setDeletingId(null); }
+            } else if (mode === 'edit' && pendingData) {
+              setSavingEdit(true);
+              try {
+                await onUpdateSessionWithScope(session, pendingData, scope);
+                setEditingSession(null);
+                showToast('success', 'Sesión(es) actualizada(s)');
+              } catch { showToast('error', 'Error al actualizar'); }
+              finally { setSavingEdit(false); }
+            }
+          }}
         />
       )}
     </div>
@@ -2914,13 +3077,16 @@ const SessionsView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SessionWorkspaceView = ({
-  session, initialTab, subjects, teamId, attendanceRecords, loadRecords, onBack, onUpdateSession, showToast
+  session, initialTab, subjects, teamId, attendanceRecords, loadRecords, onBack, onUpdateSession,
+  sessionPlan, onSaveSessionPlan, showToast
 }: {
   session: Session; initialTab: 'anotaciones' | 'plan' | 'lista' | 'material';
   subjects: Subject[]; teamId?: string;
   attendanceRecords: AttendanceRecord[]; loadRecords: LoadRecord[];
   onBack: () => void;
   onUpdateSession: (id: string, data: Partial<Session>) => Promise<void>;
+  sessionPlan?: { objective: string; blocks: DrillBlock[] };
+  onSaveSessionPlan: (sessionId: string, blocks: DrillBlock[], objective: string) => Promise<void>;
   showToast: (t: ToastType, m: string) => void;
 }) => {
   type WTab = 'anotaciones' | 'plan' | 'lista' | 'material';
@@ -2956,7 +3122,7 @@ const SessionWorkspaceView = ({
   const hasMaterial    = material.trim().length > 0;
   const hasLista       = attendanceRecords.some(a => a.sessionId === session.id);
   const hasRpe         = loadRecords.some(l => l.sessionId === session.id && (l.sessionLoad || 0) > 0);
-  const hasPlan        = !!(initZone || initPhase);
+  const hasPlan        = !!(sessionPlan?.blocks?.length || initZone || initPhase);
 
   const TABS: { id: WTab; label: string; hasContent: boolean }[] = [
     { id: 'anotaciones', label: '📝 Anotaciones', hasContent: hasAnnotations },
@@ -3075,7 +3241,19 @@ const SessionWorkspaceView = ({
           {activeTab === 'plan' && (
             <>
               {planOpen && (
-                <SessionPlanTool session={session} subjects={subjects} onClose={() => setPlanOpen(false)} showToast={showToast} />
+                <SessionPlanTool
+                  session={session}
+                  subjects={subjects}
+                  initialBlocks={sessionPlan?.blocks}
+                  initialObjective={sessionPlan?.objective}
+                  onSave={async (blocks, objective) => {
+                    await onSaveSessionPlan(session.id, blocks, objective);
+                    showToast('success', `Plan de "${session.title}" guardado`);
+                    setPlanOpen(false);
+                  }}
+                  onClose={() => setPlanOpen(false)}
+                  showToast={showToast}
+                />
               )}
               {!planOpen && (
                 <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 space-y-4">
@@ -3106,18 +3284,30 @@ const SessionWorkspaceView = ({
                       ⏱ {session.durationMins} min planificados
                     </span>
                   </div>
-                  {/* Notes/annotations as plan description */}
-                  {annotations.trim() ? (
-                    <div className="bg-slate-950/60 border border-slate-800 rounded-2xl px-5 py-4 space-y-1">
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Anotaciones del plan</p>
-                      {annotations.split('\n').slice(0, 5).map((line, i) => (
-                        line.trim()
-                          ? <p key={i} className="text-sm text-slate-300 leading-relaxed">{line}</p>
-                          : <div key={i} className="h-1" />
-                      ))}
-                      {annotations.split('\n').length > 5 && (
-                        <p className="text-[9px] text-slate-600 mt-2">+ {annotations.split('\n').length - 5} líneas más</p>
+                  {/* Plan de bloques */}
+                  {sessionPlan?.blocks?.length ? (
+                    <div className="space-y-2">
+                      {sessionPlan.objective && (
+                        <div className="bg-slate-950/60 border border-slate-800 rounded-2xl px-5 py-3">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Objetivo</p>
+                          <p className="text-sm text-slate-300">{sessionPlan.objective}</p>
+                        </div>
                       )}
+                      {/* Resumen de bloques */}
+                      <div className="space-y-1.5">
+                        {sessionPlan.blocks.map((b, i) => (
+                          <div key={b.id} className="flex items-center gap-3 bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5">
+                            <span className="text-[9px] text-slate-600 font-mono w-5 shrink-0">#{i+1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-white truncate">{b.phase}{b.name ? ` — ${b.name}` : ''}</p>
+                              {b.tasks?.filter(t => t.trim()).length > 0 && (
+                                <p className="text-[10px] text-slate-500 truncate">{b.tasks.filter(t=>t.trim()).slice(0,2).join(' · ')}{b.tasks.filter(t=>t.trim()).length > 2 ? ` +${b.tasks.filter(t=>t.trim()).length - 2}` : ''}</p>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-500 shrink-0">{b.duration}min</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="py-10 text-center border-2 border-dashed border-slate-800 rounded-2xl">
@@ -9596,6 +9786,8 @@ export default function App() {
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   // Tarea 34: protocolos de readaptación
   const [rehabProtocols, setRehabProtocols] = useState<RehabProtocol[]>([]);
+  // Tarea 42: planes de sesión (DrillBlocks + objetivo)
+  const [sessionPlans, setSessionPlans] = useState<Record<string, { objective: string; blocks: DrillBlock[] }>>({});
 
   // ── Auth ──
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -9752,7 +9944,20 @@ export default function App() {
     if (w.data) setWellnessReports(w.data.map(mapWellness));
     if (l.data) setLoadRecords(l.data.map(mapLoadRecord));
     if (m.data) setMatches(m.data.map(mapMatch));
-    if (se.data) setSessions(se.data.map(mapSession));
+    if (se.data) {
+      setSessions(se.data.map(mapSession));
+      // Tarea 42: cargar planes de sesión en segunda pasada (necesitamos los IDs)
+      const sessionIds = se.data.map((r: any) => r.id);
+      if (sessionIds.length > 0) {
+        const { data: spData } = await supabase.from('session_plans')
+          .select('session_id, objective, blocks').in('session_id', sessionIds);
+        if (spData) {
+          const plans: Record<string, { objective: string; blocks: DrillBlock[] }> = {};
+          spData.forEach((p: any) => { plans[p.session_id] = { objective: p.objective || '', blocks: p.blocks || [] }; });
+          setSessionPlans(plans);
+        }
+      }
+    }
     if (td.data) setTestDefinitions(td.data.map(mapTestDefinition));
     if (tr.data) setPhysicalTestResults(tr.data.map(mapPhysicalTestResult));
     if (ms.data) setMatchStats(ms.data.map(mapMatchStat));
@@ -9953,6 +10158,7 @@ export default function App() {
           type: sched.sessionType, title,
           notes: `${sched.startTime}–${sched.endTime}`,
           duration_mins: durationMins > 0 ? durationMins : 90,
+          schedule_id: sched.id,  // vincula con el horario recurrente
         });
       }
     }
@@ -10000,6 +10206,28 @@ export default function App() {
     setSessions(prev => prev.filter(s => s.id !== id));
   };
 
+  // Borrado con scope (para sesiones recurrentes)
+  const handleDeleteSessionWithScope = async (session: Session, scope: 'this' | 'future' | 'all') => {
+    if (!isSupabaseConfigured) return;
+    if (scope === 'this') {
+      await handleDeleteSession(session.id);
+    } else if (scope === 'future' && session.scheduleId) {
+      const dateStr = (session.date as string).split('T')[0];
+      const { error } = await supabase.from('sessions')
+        .delete()
+        .eq('schedule_id', session.scheduleId)
+        .gte('date', dateStr);
+      if (error) throw error;
+      setSessions(prev => prev.filter(s => !(s.scheduleId === session.scheduleId && (s.date as string).split('T')[0] >= dateStr)));
+    } else if (scope === 'all' && session.scheduleId) {
+      const { error } = await supabase.from('sessions').delete().eq('schedule_id', session.scheduleId);
+      if (error) throw error;
+      setSessions(prev => prev.filter(s => s.scheduleId !== session.scheduleId));
+    } else {
+      await handleDeleteSession(session.id);
+    }
+  };
+
   const handleUpdateSession = async (id: string, data: Partial<Session>) => {
     if (!isSupabaseConfigured) return;
     const update: Record<string, any> = {};
@@ -10012,6 +10240,67 @@ export default function App() {
     const { error } = await supabase.from('sessions').update(update).eq('id', id);
     if (error) throw error;
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+  };
+
+  // Edición con scope (para sesiones recurrentes) — aplica solo campos editables: title, type, durationMins
+  const handleUpdateSessionWithScope = async (session: Session, data: Partial<Session>, scope: 'this' | 'future' | 'all') => {
+    if (!isSupabaseConfigured) return;
+    const update: Record<string, any> = {};
+    if (data.title !== undefined) update.title = data.title?.trim();
+    if (data.type !== undefined) update.type = data.type;
+    if (data.notes !== undefined) update.notes = data.notes;
+    if (data.durationMins !== undefined) update.duration_mins = data.durationMins;
+    // Nota: date solo se aplica a 'this' (cambiar fecha no tiene sentido en 'all')
+    if (scope === 'this') {
+      if (data.date !== undefined) update.date = data.date;
+      const { error } = await supabase.from('sessions').update(update).eq('id', session.id);
+      if (error) throw error;
+      setSessions(prev => prev.map(s => s.id === session.id ? { ...s, ...data } : s));
+    } else if (scope === 'future' && session.scheduleId) {
+      const dateStr = (session.date as string).split('T')[0];
+      const { error } = await supabase.from('sessions').update(update)
+        .eq('schedule_id', session.scheduleId)
+        .gte('date', dateStr);
+      if (error) throw error;
+      setSessions(prev => prev.map(s =>
+        s.scheduleId === session.scheduleId && (s.date as string).split('T')[0] >= dateStr
+          ? { ...s, ...data } : s
+      ));
+    } else if (scope === 'all' && session.scheduleId) {
+      const { error } = await supabase.from('sessions').update(update).eq('schedule_id', session.scheduleId);
+      if (error) throw error;
+      setSessions(prev => prev.map(s => s.scheduleId === session.scheduleId ? { ...s, ...data } : s));
+    } else {
+      await handleUpdateSession(session.id, data);
+    }
+  };
+
+  // Editar un slot del horario recurrente (training_schedule)
+  const handleUpdateTrainingSchedule = async (id: string, data: Partial<TrainingSchedule>) => {
+    if (!isSupabaseConfigured) return;
+    const update: Record<string, any> = {};
+    if (data.dayOfWeek !== undefined) update.day_of_week = data.dayOfWeek;
+    if (data.startTime !== undefined) update.start_time = data.startTime;
+    if (data.endTime !== undefined) update.end_time = data.endTime;
+    if (data.sessionType !== undefined) update.session_type = data.sessionType;
+    if (data.title !== undefined) update.title = data.title;
+    const { error } = await supabase.from('training_schedules').update(update).eq('id', id);
+    if (error) throw error;
+    setTrainingSchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+  };
+
+  // Tarea 42: guardar plan de sesión en Supabase
+  const handleSaveSessionPlan = async (sessionId: string, blocks: DrillBlock[], objective: string) => {
+    // Actualización optimista
+    setSessionPlans(prev => ({ ...prev, [sessionId]: { blocks, objective } }));
+    if (!isSupabaseConfigured) return;
+    const { error } = await supabase.from('session_plans').upsert([{
+      session_id: sessionId,
+      objective,
+      blocks,
+      updated_at: new Date().toISOString(),
+    }], { onConflict: 'session_id' });
+    if (error) throw error;
   };
 
   const handleAddIncident = async (incident: Partial<HealthIncident>) => {
@@ -10311,13 +10600,18 @@ export default function App() {
       case 'sessions': return (
         <SessionsView sessions={sessions} onAddSession={handleAddSession}
           onDeleteSession={handleDeleteSession} onUpdateSession={handleUpdateSession}
+          onDeleteSessionWithScope={handleDeleteSessionWithScope}
+          onUpdateSessionWithScope={handleUpdateSessionWithScope}
           subjects={teamSubjects} teamId={activeTeam?.id} onQuickAttendance={handleQuickAttendance}
           isAdding={isAddingSession} setIsAdding={setIsAddingSession}
           attendanceRecords={attendanceRecords} loadRecords={loadRecords} showToast={showToast}
           trainingSchedules={trainingSchedules}
           onAddSchedule={handleAddTrainingSchedule}
           onDeleteSchedule={handleDeleteTrainingSchedule}
+          onUpdateSchedule={handleUpdateTrainingSchedule}
           onGenerateSessions={handleGenerateSessions}
+          sessionPlans={sessionPlans}
+          onSaveSessionPlan={handleSaveSessionPlan}
           initialSession={todaySessionTarget}
           onSessionOpened={() => setTodaySessionTarget(null)} />
       );

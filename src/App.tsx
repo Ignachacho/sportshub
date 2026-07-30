@@ -36,7 +36,7 @@ import {
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
   Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList, CalendarDays,
-  Globe, Activity
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -156,6 +156,28 @@ const getRiskColor = (score: number) => {
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// ── Tipos locales ─────────────────────────────────────────────────────────────
+
+// Ejercicios (biblioteca)
+type ExerciseCategory = 'Fuerza' | 'Velocidad' | 'Resistencia' | 'Técnica' | 'Táctica' | 'Recuperación' | 'Flexibilidad' | 'Coordinación' | 'Otro';
+type Exercise = {
+  id: string; teamId: string; coachId?: string;
+  name: string; category: ExerciseCategory;
+  description?: string; imageUrl?: string;
+  tags: string[]; createdAt?: string;
+};
+
+// Protocolo de readaptación de lesiones
+type RehabPhase = {
+  id: string; name: string; durationWeeks: number;
+  objectives: string; exercises: string;
+  advanceCriteria: string;
+};
+type RehabProtocol = {
+  id: string; teamId: string; incidentId: string;
+  name: string; phases: RehabPhase[]; createdAt?: string;
+};
+
 // ── Períodos de temporada ────────────────────────────────────────────────────
 type SeasonPeriod = 'preseason' | 'regular' | 'playoffs' | 'recovery';
 const PERIOD_CFG: Record<SeasonPeriod, { label: string; emoji: string; color: string; bg: string; border: string; acwrWarn: number; desc: string }> = {
@@ -229,7 +251,7 @@ const ToastContainer = ({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
     <div className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-[300] flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map(t => {
-          const Icon = iconMap[t.type];
+          const Icon = iconMap[t.type] ?? CheckCircle;
           return (
             <motion.div
               key={t.id}
@@ -746,6 +768,7 @@ const NAV_ITEMS = [
   { id: 'matches',        label: 'Partidos',         icon: Trophy },
   { id: 'physical_tests', label: 'Tests Físicos',    icon: Dumbbell },
   { id: 'prepfisica',     label: 'Prep. Física',     icon: Zap },
+  { id: 'biblioteca',     label: 'Biblioteca',       icon: BookOpen },
   { id: 'health',         label: 'Salud',            icon: HeartPulse },
   { id: 'reports',        label: 'Informes IA',      icon: BrainCircuit },
   { id: 'profile',        label: 'Perfil',           icon: User },
@@ -829,7 +852,7 @@ const Sidebar = ({
           <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Herramientas</p>
         </div>
         <div className="space-y-0.5">
-          {NAV_ITEMS.filter(i => ['matches','physical_tests','prepfisica','health','reports','profile'].includes(i.id)).map(item => (
+          {NAV_ITEMS.filter(i => ['matches','physical_tests','prepfisica','biblioteca','health','reports','profile'].includes(i.id)).map(item => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
@@ -3797,14 +3820,21 @@ const MobileRPESheet = ({
     if (!isSupabaseConfigured) { onSaved(); onClose(); return; }
     setSaving(true);
     try {
-      const inserts = Object.entries(rpeMap).map(([sid, v]) => ({
+      const entries = Object.entries(rpeMap);
+      // RPE (carga)
+      const loadInserts = entries.map(([sid, v]) => ({
         team_id: teamId, session_id: session.id, subject_id: sid,
         borg_scale: v, duration_mins: session.durationMins || 90,
         session_load: v * (session.durationMins || 90),
       }));
-      if (inserts.length) {
-        await supabase.from('load_records').upsert(inserts, { onConflict: 'session_id,subject_id' });
-      }
+      // Asistencia: todos los jugadores con RPE → present
+      const attInserts = entries.map(([sid]) => ({
+        team_id: teamId, session_id: session.id, subject_id: sid, status: 'present',
+      }));
+      await Promise.all([
+        loadInserts.length ? supabase.from('load_records').upsert(loadInserts, { onConflict: 'session_id,subject_id' }) : Promise.resolve(),
+        attInserts.length  ? supabase.from('attendance').upsert(attInserts,   { onConflict: 'session_id,subject_id' }) : Promise.resolve(),
+      ]);
       onSaved();
       onClose();
     } catch { /* silent */ }
@@ -3913,16 +3943,24 @@ const MobileRPESheet = ({
           ) : (
             /* Confirm step */
             <div className="space-y-4">
-              <h4 className="font-black text-white text-base">Resumen RPE</h4>
+              <div>
+                <h4 className="font-black text-white text-base">Resumen RPE</h4>
+                <p className="text-[10px] text-emerald-400 mt-0.5">✓ Lista de asistencia incluida automáticamente</p>
+              </div>
               <div className="space-y-2">
                 {players.map(p => {
                   const rpe = rpeMap[p.id];
                   const info = rpe !== undefined ? BORG_LABELS[rpe] : null;
                   return (
                     <div key={p.id} className="flex items-center justify-between py-2.5 px-4 bg-slate-800 rounded-xl">
-                      <span className="text-sm font-bold text-white">
-                        {p.number ? `#${p.number} ` : ''}{p.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {rpe !== undefined
+                          ? <span className="text-emerald-400 text-[10px]">✓</span>
+                          : <span className="text-slate-600 text-[10px]">○</span>}
+                        <span className="text-sm font-bold text-white">
+                          {p.number ? `#${p.number} ` : ''}{p.name}
+                        </span>
+                      </div>
                       {rpe !== undefined && info ? (
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-slate-400">{info.label}</span>
@@ -3933,13 +3971,21 @@ const MobileRPESheet = ({
                   );
                 })}
               </div>
-              <div className="bg-slate-950/60 rounded-xl p-3 text-center">
-                <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Carga media equipo</p>
-                <p className="text-2xl font-black text-white">
-                  {Object.values(rpeMap).length > 0
-                    ? Math.round((Object.values(rpeMap).reduce((a,b)=>a+b,0)/Object.values(rpeMap).length) * (session.durationMins || 90)) + ' AU'
-                    : '—'}
-                </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-950/60 rounded-xl p-3 text-center">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Carga media</p>
+                  <p className="text-xl font-black text-white">
+                    {Object.values(rpeMap).length > 0
+                      ? Math.round((Object.values(rpeMap).reduce((a,b)=>a+b,0)/Object.values(rpeMap).length) * (session.durationMins || 90)) + ' AU'
+                      : '—'}
+                  </p>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                  <p className="text-[9px] text-emerald-500 uppercase tracking-widest mb-0.5">Presentes</p>
+                  <p className="text-xl font-black text-emerald-400">
+                    {Object.keys(rpeMap).length}/{players.length}
+                  </p>
+                </div>
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setStep('rpe')} className="px-5 py-3.5 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
@@ -3947,8 +3993,8 @@ const MobileRPESheet = ({
                 </button>
                 <button onClick={handleSave} disabled={saving || Object.keys(rpeMap).length === 0}
                   className="flex-1 py-3.5 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-                  {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                  Guardar RPE
+                  {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  {saving ? 'Guardando...' : 'Guardar RPE + Lista'}
                 </button>
               </div>
             </div>
@@ -4863,7 +4909,8 @@ const DashboardView = ({
 
 const HealthView = ({
   subjects, incidents, wellnessReports, loadRecords, onAddIncident,
-  onUpdateIncident, onDeleteIncident, isAddingIncident, setIsAddingIncident, showToast, sessions, onSaveWellness
+  onUpdateIncident, onDeleteIncident, isAddingIncident, setIsAddingIncident, showToast, sessions, onSaveWellness,
+  rehabProtocols, onSaveRehabProtocol, onUpdateRehabProtocol, onDeleteRehabProtocol,
 }: {
   subjects: Subject[]; incidents: HealthIncident[]; wellnessReports: WellnessReport[];
   loadRecords: LoadRecord[]; onAddIncident: (i: Partial<HealthIncident>) => Promise<void>;
@@ -4872,10 +4919,16 @@ const HealthView = ({
   isAddingIncident: boolean; setIsAddingIncident: (v: boolean) => void;
   showToast: (t: ToastType, m: string) => void; sessions: Session[];
   onSaveWellness: (w: WellnessReport) => Promise<void>;
+  rehabProtocols?: RehabProtocol[];
+  onSaveRehabProtocol?: (p: Omit<RehabProtocol, 'id' | 'createdAt'>) => Promise<void>;
+  onUpdateRehabProtocol?: (id: string, u: Partial<RehabProtocol>) => Promise<void>;
+  onDeleteRehabProtocol?: (id: string) => Promise<void>;
 }) => {
   const [activeTab, setActiveTab] = useState<'scatter' | 'acwr' | 'incidents' | 'wellness' | 'positions'>('incidents');
   const [incidentForm, setIncidentForm] = useState({ subjectId: '', type: '', severity: 'medium' as const, date: new Date().toISOString().split('T')[0], notes: '', status: 'active' });
   const [savingIncident, setSavingIncident] = useState(false);
+  // Panel de rehab: qué incidencia está expandida
+  const [expandedRehabId, setExpandedRehabId] = useState<string | null>(null);
   const players = subjects.filter(s => s.role === Role.PLAYER);
 
   // ── Temporal cross: Load(Day X) × Wellness(Day X+1) ──
@@ -5265,34 +5318,58 @@ const HealthView = ({
               const player = subjects.find(s => s.id === incident.subjectId);
               const severityStyle = incident.severity === 'high' ? 'border-red-500/30 bg-red-500/5' : incident.severity === 'medium' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-700 bg-slate-950';
               return (
-                <div key={incident.id} className={cn("border rounded-2xl p-5 flex items-start justify-between gap-4", severityStyle)}>
-                  <div className="flex items-start gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", incident.severity === 'high' ? 'bg-red-500/20' : incident.severity === 'medium' ? 'bg-emerald-500/20' : 'bg-slate-800')}>
-                      <HeartPulse size={18} className={incident.severity === 'high' ? 'text-red-400' : incident.severity === 'medium' ? 'text-emerald-400' : 'text-slate-500'} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold text-white">{player?.name || 'Jugador'}</span>
-                        <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-md uppercase", incident.severity === 'high' ? 'bg-red-500/20 text-red-400' : incident.severity === 'medium' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500')}>{incident.severity}</span>
+                <div key={incident.id} className={cn("border rounded-2xl overflow-hidden", severityStyle)}>
+                  <div className="p-5 flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", incident.severity === 'high' ? 'bg-red-500/20' : incident.severity === 'medium' ? 'bg-emerald-500/20' : 'bg-slate-800')}>
+                        <HeartPulse size={18} className={incident.severity === 'high' ? 'text-red-400' : incident.severity === 'medium' ? 'text-emerald-400' : 'text-slate-500'} />
                       </div>
-                      <p className="text-sm text-slate-300 font-medium">{incident.type}</p>
-                      <p className="text-[10px] text-slate-500 font-mono mt-1">{incident.date} {incident.notes && `• ${incident.notes}`}</p>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold text-white">{player?.name || 'Jugador'}</span>
+                          <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-md uppercase", incident.severity === 'high' ? 'bg-red-500/20 text-red-400' : incident.severity === 'medium' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500')}>{incident.severity}</span>
+                        </div>
+                        <p className="text-sm text-slate-300 font-medium">{incident.type}</p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-1">{incident.date} {incident.notes && `• ${incident.notes}`}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={cn("text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase border", incident.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20' : incident.status === 'monitoring' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{incident.status}</span>
+                      {(incident.status === 'active' || incident.status === 'monitoring') && (
+                        <button onClick={() => { onUpdateIncident(incident.id, { status: 'recovered', recoveryDate: new Date().toISOString().split('T')[0] }); showToast('success', `${player?.name}: marcado como recuperado`); }}
+                          className="text-[9px] font-bold text-emerald-400 hover:underline uppercase">
+                          Marcar recuperado →
+                        </button>
+                      )}
+                      {/* Protocolo rehab */}
+                      {onSaveRehabProtocol && (
+                        <button onClick={() => setExpandedRehabId(expandedRehabId === incident.id ? null : incident.id)}
+                          className={cn("text-[9px] font-bold uppercase hover:underline transition-colors",
+                            rehabProtocols?.some(p => p.incidentId === incident.id) ? 'text-blue-400' : 'text-slate-600 hover:text-blue-400')}>
+                          {expandedRehabId === incident.id ? '▲ Cerrar' : (rehabProtocols?.some(p => p.incidentId === incident.id) ? '📋 Ver protocolo' : '+ Protocolo')}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { if (window.confirm('¿Eliminar esta incidencia? Se borrará permanentemente.')) onDeleteIncident(incident.id); }}
+                        className="text-[9px] font-bold text-slate-600 hover:text-red-400 hover:underline uppercase transition-colors">
+                        Eliminar →
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className={cn("text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase border", incident.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20' : incident.status === 'monitoring' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{incident.status}</span>
-                    {(incident.status === 'active' || incident.status === 'monitoring') && (
-                      <button onClick={() => { onUpdateIncident(incident.id, { status: 'recovered', recoveryDate: new Date().toISOString().split('T')[0] }); showToast('success', `${player?.name}: marcado como recuperado`); }}
-                        className="text-[9px] font-bold text-emerald-400 hover:underline uppercase">
-                        Marcar recuperado →
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { if (window.confirm('¿Eliminar esta incidencia? Se borrará permanentemente.')) onDeleteIncident(incident.id); }}
-                      className="text-[9px] font-bold text-slate-600 hover:text-red-400 hover:underline uppercase transition-colors">
-                      Eliminar →
-                    </button>
-                  </div>
+                  {/* Panel rehab expandido */}
+                  {expandedRehabId === incident.id && onSaveRehabProtocol && (
+                    <div className="px-5 pb-5 pt-0 border-t border-slate-800/60">
+                      <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-4 mb-3">📋 Protocolo de Readaptación</p>
+                      <RehabProtocolPanel
+                        incident={incident}
+                        protocol={rehabProtocols?.find(p => p.incidentId === incident.id) || null}
+                        onSave={onSaveRehabProtocol}
+                        onUpdate={onUpdateRehabProtocol!}
+                        onDelete={onDeleteRehabProtocol!}
+                        showToast={showToast}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -7008,6 +7085,498 @@ const PhysicalTestsView = ({
 // PLANNING VIEW — Macrociclo anual
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EJERCICIOS VIEW — Biblioteca de ejercicios con imagen
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EXERCISE_CATEGORIES: ExerciseCategory[] = [
+  'Fuerza', 'Velocidad', 'Resistencia', 'Técnica', 'Táctica', 'Recuperación', 'Flexibilidad', 'Coordinación', 'Otro',
+];
+const CATEGORY_COLOR: Record<ExerciseCategory, string> = {
+  Fuerza: 'bg-red-500/15 text-red-400 border-red-500/25',
+  Velocidad: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  Resistencia: 'bg-orange-500/15 text-orange-400 border-orange-500/25',
+  Técnica: 'bg-blue-500/15 text-blue-400 border-blue-500/25',
+  Táctica: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
+  Recuperación: 'bg-teal-500/15 text-teal-400 border-teal-500/25',
+  Flexibilidad: 'bg-pink-500/15 text-pink-400 border-pink-500/25',
+  Coordinación: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
+  Otro: 'bg-slate-700 text-slate-400 border-slate-600',
+};
+
+const ExercisesView = ({
+  exercises, teamId, onAdd, onDelete, onUploadImage, showToast,
+}: {
+  exercises: Exercise[]; teamId?: string;
+  onAdd: (ex: Omit<Exercise, 'id' | 'teamId' | 'createdAt'>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onUploadImage: (file: File) => Promise<string | null>;
+  showToast: (t: ToastType, m: string) => void;
+}) => {
+  const [filterCat, setFilterCat] = useState<ExerciseCategory | 'all'>('all');
+  const [search, setSearch] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [detailEx, setDetailEx] = useState<Exercise | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [imageMode, setImageMode] = useState<'url' | 'file'>('url');
+  const [form, setForm] = useState({
+    name: '', category: 'Técnica' as ExerciseCategory,
+    description: '', imageUrl: '', tags: '',
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  const filtered = exercises.filter(e => {
+    const matchCat = filterCat === 'all' || e.category === filterCat;
+    const matchSearch = !search || e.name.toLowerCase().includes(search.toLowerCase()) ||
+      (e.description || '').toLowerCase().includes(search.toLowerCase()) ||
+      e.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
+    return matchCat && matchSearch;
+  });
+
+  const handleFileChange = async (file: File) => {
+    setUploadingImg(true);
+    setPreviewUrl(URL.createObjectURL(file));
+    const url = await onUploadImage(file);
+    if (url) { setForm(f => ({ ...f, imageUrl: url })); showToast('success', 'Imagen subida'); }
+    setUploadingImg(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { showToast('warning', 'El nombre es obligatorio'); return; }
+    setSaving(true);
+    await onAdd({
+      name: form.name.trim(), category: form.category,
+      description: form.description.trim() || undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
+      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+    });
+    setForm({ name: '', category: 'Técnica', description: '', imageUrl: '', tags: '' });
+    setPreviewUrl('');
+    setSaving(false);
+    setShowAdd(false);
+  };
+
+  const imgUrl = previewUrl || form.imageUrl;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tight">Biblioteca de Ejercicios</h2>
+          <p className="text-xs text-slate-500 mt-1">{exercises.length} ejercicio{exercises.length !== 1 ? 's' : ''} guardados</p>
+        </div>
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 self-start">
+          <Plus size={14} /> Añadir ejercicio
+        </button>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-col gap-3">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, descripción o etiqueta..."
+          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500/50 placeholder:text-slate-600" />
+        <div className="flex gap-2 flex-wrap">
+          {(['all', ...EXERCISE_CATEGORIES] as const).map(cat => (
+            <button key={cat} onClick={() => setFilterCat(cat)}
+              className={cn('px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-wide transition-all',
+                filterCat === cat
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700')}>
+              {cat === 'all' ? 'Todos' : cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid de ejercicios */}
+      {filtered.length === 0 ? (
+        <div className="py-24 text-center border-2 border-dashed border-slate-800 rounded-[28px]">
+          <BookOpen className="mx-auto text-slate-700 mb-3" size={36} />
+          <p className="text-slate-500 font-bold">
+            {exercises.length === 0 ? 'Biblioteca vacía' : 'Ningún ejercicio coincide'}
+          </p>
+          <p className="text-slate-700 text-xs mt-1">
+            {exercises.length === 0 ? 'Añade el primer ejercicio con imagen o descripción' : 'Prueba con otro filtro'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(ex => (
+            <div key={ex.id} className="bg-slate-900 border border-slate-800 rounded-[20px] overflow-hidden group hover:border-slate-700 transition-all cursor-pointer"
+              onClick={() => setDetailEx(ex)}>
+              {/* Image */}
+              <div className="relative w-full h-36 bg-slate-800 flex items-center justify-center overflow-hidden">
+                {ex.imageUrl ? (
+                  <img src={ex.imageUrl} alt={ex.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-slate-700">
+                    <Dumbbell size={28} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Sin imagen</span>
+                  </div>
+                )}
+                <div className="absolute top-2 left-2">
+                  <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border', CATEGORY_COLOR[ex.category])}>
+                    {ex.category}
+                  </span>
+                </div>
+                <button onClick={e => { e.stopPropagation(); setConfirmDelete(ex.id); }}
+                  className="absolute top-2 right-2 w-6 h-6 bg-slate-950/80 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                  <Trash2 size={11} />
+                </button>
+              </div>
+              {/* Content */}
+              <div className="p-4">
+                <h3 className="font-black text-white text-sm truncate">{ex.name}</h3>
+                {ex.description && <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{ex.description}</p>}
+                {ex.tags.length > 0 && (
+                  <div className="flex gap-1 flex-wrap mt-2">
+                    {ex.tags.slice(0, 4).map(tag => (
+                      <span key={tag} className="text-[8px] font-bold px-2 py-0.5 rounded-lg bg-slate-800 text-slate-500 border border-slate-700">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal detalle */}
+      <AnimatePresence>
+        {detailEx && (
+          <motion.div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setDetailEx(null)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-slate-900 border border-slate-700 rounded-[28px] overflow-hidden max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+              {detailEx.imageUrl && (
+                <div className="w-full h-56 bg-slate-800 overflow-hidden">
+                  <img src={detailEx.imageUrl} alt={detailEx.name} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border', CATEGORY_COLOR[detailEx.category])}>{detailEx.category}</span>
+                    <h2 className="text-xl font-black text-white mt-2">{detailEx.name}</h2>
+                  </div>
+                  <button onClick={() => setDetailEx(null)} className="p-2 text-slate-500 hover:text-white transition-colors shrink-0">
+                    <X size={18} />
+                  </button>
+                </div>
+                {detailEx.description && (
+                  <p className="text-sm text-slate-300 leading-relaxed">{detailEx.description}</p>
+                )}
+                {detailEx.tags.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {detailEx.tags.map(tag => (
+                      <span key={tag} className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-slate-800 text-slate-400 border border-slate-700">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal añadir ejercicio */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowAdd(false)} />
+            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+              className="relative bg-slate-900 border border-slate-700 rounded-t-[28px] sm:rounded-[28px] w-full sm:max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+              <div className="sticky top-0 flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800 bg-slate-900 z-10">
+                <h3 className="text-base font-black text-white">Nuevo ejercicio</h3>
+                <button onClick={() => setShowAdd(false)} className="p-1.5 text-slate-500 hover:text-white transition-colors"><X size={16} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+
+                {/* Nombre */}
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Nombre *</label>
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Sprint 10m, Pase en triángulo, Salto con recepción..."
+                    className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50 text-sm" />
+                </div>
+
+                {/* Categoría */}
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Categoría</label>
+                  <div className="flex gap-1.5 flex-wrap mt-1.5">
+                    {EXERCISE_CATEGORIES.map(cat => (
+                      <button key={cat} onClick={() => setForm(f => ({ ...f, category: cat }))}
+                        className={cn('px-3 py-1.5 rounded-xl border text-[9px] font-black transition-all',
+                          form.category === cat ? CATEGORY_COLOR[cat] : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300')}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Descripción</label>
+                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Instrucciones, variantes, puntos clave..."
+                    rows={3}
+                    className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50 text-sm resize-none" />
+                </div>
+
+                {/* Imagen */}
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Imagen</label>
+                  <div className="flex gap-2 mt-1.5 mb-2">
+                    {(['url', 'file'] as const).map(m => (
+                      <button key={m} onClick={() => { setImageMode(m); setForm(f => ({ ...f, imageUrl: '' })); setPreviewUrl(''); }}
+                        className={cn('flex-1 py-2 rounded-xl border text-[9px] font-black uppercase transition-all',
+                          imageMode === m ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300')}>
+                        {m === 'url' ? '🔗 Desde URL' : '📁 Subir archivo'}
+                      </button>
+                    ))}
+                  </div>
+                  {imageMode === 'url' ? (
+                    <input value={form.imageUrl} onChange={e => { setForm(f => ({ ...f, imageUrl: e.target.value })); setPreviewUrl(''); }}
+                      placeholder="https://..."
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50 text-sm" />
+                  ) : (
+                    <div>
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f); }} />
+                      <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImg}
+                        className="w-full py-3 rounded-xl border-2 border-dashed border-slate-700 text-slate-500 hover:border-emerald-500/40 hover:text-emerald-400 text-sm font-bold transition-all flex items-center justify-center gap-2">
+                        {uploadingImg ? <><Loader2 size={14} className="animate-spin" /> Subiendo...</> : <><Upload size={14} /> Seleccionar imagen</>}
+                      </button>
+                    </div>
+                  )}
+                  {/* Preview */}
+                  {imgUrl && (
+                    <div className="mt-2 w-full h-32 rounded-xl overflow-hidden border border-slate-700">
+                      <img src={imgUrl} alt="Preview" className="w-full h-full object-cover"
+                        onError={() => { setPreviewUrl(''); setForm(f => ({ ...f, imageUrl: '' })); showToast('error', 'URL de imagen no válida'); }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Etiquetas (separadas por coma)</label>
+                  <input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                    placeholder="balón, pared, 1v1, remate..."
+                    className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500/50 text-sm" />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setShowAdd(false)} className="flex-1 py-3 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
+                    Cancelar
+                  </button>
+                  <button onClick={handleSave} disabled={saving || !form.name.trim()}
+                    className="flex-1 py-3 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    {saving ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm delete */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-slate-950/80" onClick={() => setConfirmDelete(null)} />
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+              className="relative bg-slate-900 border border-red-500/30 rounded-[24px] p-6 max-w-xs w-full shadow-2xl text-center space-y-4">
+              <p className="text-white font-black">¿Eliminar ejercicio?</p>
+              <p className="text-slate-500 text-xs">Esta acción no se puede deshacer</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-400 text-sm font-bold border border-slate-700">Cancelar</button>
+                <button onClick={async () => { await onDelete(confirmDelete); setConfirmDelete(null); }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500/15 text-red-400 text-sm font-bold border border-red-500/30 hover:bg-red-500/25">
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REHAB PROTOCOL PANEL — protocolo de readaptación por lesión
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RehabProtocolPanel = ({
+  incident, protocol, onSave, onUpdate, onDelete, showToast,
+}: {
+  incident: HealthIncident;
+  protocol: RehabProtocol | null;
+  onSave: (p: Omit<RehabProtocol, 'id' | 'createdAt'>) => Promise<void>;
+  onUpdate: (id: string, u: Partial<RehabProtocol>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  showToast: (t: ToastType, m: string) => void;
+}) => {
+  const defaultPhase = (): RehabPhase => ({
+    id: Math.random().toString(36).slice(2), name: '', durationWeeks: 1,
+    objectives: '', exercises: '', advanceCriteria: '',
+  });
+  const [editing, setEditing] = useState(!protocol);
+  const [name, setName] = useState(protocol?.name || `Readaptación — ${incident.type}`);
+  const [phases, setPhases] = useState<RehabPhase[]>(protocol?.phases?.length ? protocol.phases : [defaultPhase()]);
+  const [saving, setSaving] = useState(false);
+
+  const addPhase = () => setPhases(p => [...p, defaultPhase()]);
+  const removePhase = (id: string) => setPhases(p => p.filter(ph => ph.id !== id));
+  const updatePhase = (id: string, key: keyof RehabPhase, val: string | number) =>
+    setPhases(p => p.map(ph => ph.id === id ? { ...ph, [key]: val } : ph));
+
+  const totalWeeks = phases.reduce((a, p) => a + (p.durationWeeks || 0), 0);
+
+  const handleSave = async () => {
+    if (!name.trim() || phases.some(p => !p.name.trim())) {
+      showToast('warning', 'Nombre y fases son obligatorios'); return;
+    }
+    setSaving(true);
+    try {
+      if (protocol) {
+        await onUpdate(protocol.id, { name, phases });
+      } else {
+        await onSave({ teamId: incident.teamId || '', incidentId: incident.id, name, phases });
+      }
+      setEditing(false);
+    } finally { setSaving(false); }
+  };
+
+  const handleExport = () => {
+    const lines: string[] = [
+      `PROTOCOLO DE READAPTACIÓN`,
+      `========================`,
+      `Nombre: ${name}`,
+      `Lesión: ${incident.type} | Severidad: ${incident.severity}`,
+      `Duración total estimada: ${totalWeeks} semanas`,
+      ``,
+      ...phases.flatMap((ph, i) => [
+        `FASE ${i + 1}: ${ph.name} (${ph.durationWeeks} sem)`,
+        `Objetivos: ${ph.objectives}`,
+        `Ejercicios: ${ph.exercises}`,
+        `Criterios de avance: ${ph.advanceCriteria}`,
+        ``,
+      ]),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${name}.txt`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('success', 'Protocolo exportado');
+  };
+
+  if (!editing && protocol) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-black text-white">{protocol.name}</p>
+            <p className="text-[9px] text-slate-500 mt-0.5">{totalWeeks} semanas · {phases.length} fases</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[9px] font-bold text-slate-400 hover:text-white transition-all">
+              <Download size={11} /> Exportar
+            </button>
+            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[9px] font-bold text-slate-400 hover:text-white transition-all">
+              <Edit2 size={11} /> Editar
+            </button>
+            <button onClick={() => onDelete(protocol.id)} className="p-1.5 rounded-xl text-slate-600 hover:text-red-400 transition-colors">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {phases.map((ph, i) => (
+            <div key={ph.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-5 h-5 bg-emerald-500 rounded-full text-[9px] font-black text-slate-950 flex items-center justify-center shrink-0">{i + 1}</span>
+                <p className="font-bold text-white text-sm">{ph.name}</p>
+                <span className="text-[8px] text-slate-500 ml-auto">{ph.durationWeeks} sem</span>
+              </div>
+              {ph.objectives && <p className="text-[10px] text-slate-400 mb-1"><span className="text-emerald-500 font-bold">Objetivos:</span> {ph.objectives}</p>}
+              {ph.exercises && <p className="text-[10px] text-slate-400 mb-1"><span className="text-blue-400 font-bold">Ejercicios:</span> {ph.exercises}</p>}
+              {ph.advanceCriteria && <p className="text-[10px] text-slate-400"><span className="text-amber-400 font-bold">Criterios:</span> {ph.advanceCriteria}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Nombre del protocolo</label>
+        <input value={name} onChange={e => setName(e.target.value)}
+          className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white outline-none focus:border-emerald-500/50 text-sm" />
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Fases ({totalWeeks} sem total)</p>
+        <button onClick={addPhase} className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-[9px] font-bold text-slate-400 hover:text-white transition-all">
+          <Plus size={11} /> Añadir fase
+        </button>
+      </div>
+      <div className="space-y-3">
+        {phases.map((ph, i) => (
+          <div key={ph.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 bg-slate-700 rounded-full text-[9px] font-black text-white flex items-center justify-center shrink-0">{i + 1}</span>
+              <input value={ph.name} onChange={e => updatePhase(ph.id, 'name', e.target.value)}
+                placeholder="Nombre de la fase (Fase aguda, Subaguda...)"
+                className="flex-1 bg-transparent text-white text-sm font-bold outline-none border-b border-slate-800 focus:border-emerald-500/50 pb-0.5" />
+              <div className="flex items-center gap-1 shrink-0">
+                <input type="number" min={1} max={52} value={ph.durationWeeks} onChange={e => updatePhase(ph.id, 'durationWeeks', parseInt(e.target.value) || 1)}
+                  className="w-10 bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1 text-[10px] text-white text-center outline-none" />
+                <span className="text-[9px] text-slate-600">sem</span>
+              </div>
+              {phases.length > 1 && (
+                <button onClick={() => removePhase(ph.id)} className="text-slate-700 hover:text-red-400 transition-colors"><Minus size={13} /></button>
+              )}
+            </div>
+            <textarea value={ph.objectives} onChange={e => updatePhase(ph.id, 'objectives', e.target.value)}
+              placeholder="Objetivos de esta fase..."
+              rows={2}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/40 resize-none placeholder:text-slate-700" />
+            <textarea value={ph.exercises} onChange={e => updatePhase(ph.id, 'exercises', e.target.value)}
+              placeholder="Ejercicios y actividades..."
+              rows={2}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white outline-none focus:border-blue-400/40 resize-none placeholder:text-slate-700" />
+            <textarea value={ph.advanceCriteria} onChange={e => updatePhase(ph.id, 'advanceCriteria', e.target.value)}
+              placeholder="Criterios para avanzar a la siguiente fase..."
+              rows={1}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white outline-none focus:border-amber-400/40 resize-none placeholder:text-slate-700" />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-3">
+        {protocol && <button onClick={() => setEditing(false)} className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all">Cancelar</button>}
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 py-2.5 bg-emerald-500 rounded-xl text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+          {saving ? 'Guardando...' : 'Guardar protocolo'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 type PlanBlock = {
   id: string;
   weekKey: string;   // 'YYYY-MM-DD' del lunes de esa semana
@@ -7015,21 +7584,23 @@ type PlanBlock = {
 };
 
 const PlanningView = ({
-  sessions, loadRecords, teamId,
+  sessions, loadRecords, teamId, initialPlanBlocks, onSavePlan,
 }: {
   sessions: Session[];
   loadRecords: LoadRecord[];
   teamId?: string;
+  initialPlanBlocks: PlanBlock[];
+  onSavePlan: (blocks: PlanBlock[]) => Promise<void>;
 }) => {
-  const PLAN_KEY = `ck_plan_${teamId || 'default'}`;
+  // Estado local derivado de los bloques en Supabase (sincronizado vía prop)
+  const [planBlocks, setPlanBlocks] = useState<PlanBlock[]>(initialPlanBlocks);
 
-  // Estado del plan (localStorage)
-  const [planBlocks, setPlanBlocks] = useState<PlanBlock[]>(() => {
-    try { const s = localStorage.getItem(PLAN_KEY); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  // Sincronizar si llegan datos nuevos desde Supabase
+  useEffect(() => { setPlanBlocks(initialPlanBlocks); }, [initialPlanBlocks.length]);
+
   const savePlan = (blocks: PlanBlock[]) => {
     setPlanBlocks(blocks);
-    localStorage.setItem(PLAN_KEY, JSON.stringify(blocks));
+    onSavePlan(blocks); // async, no bloquea UI
   };
 
   // Año visible
@@ -8625,6 +9196,13 @@ export default function App() {
   const [matchStats, setMatchStats] = useState<MatchStat[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [trainingSchedules, setTrainingSchedules] = useState<TrainingSchedule[]>([]);
+  // Tarea 32: planificación en Supabase
+  const [planBlocks, setPlanBlocks] = useState<PlanBlock[]>([]);
+  // Tarea 33: biblioteca de ejercicios
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  // Tarea 34: protocolos de readaptación
+  const [rehabProtocols, setRehabProtocols] = useState<RehabProtocol[]>([]);
 
   // ── Auth ──
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -8754,7 +9332,7 @@ export default function App() {
 
   const fetchTeamData = async (teamId: string) => {
     if (!isSupabaseConfigured) return;
-    const [s, i, ev, w, l, m, se, td, tr, ms, att, sch] = await Promise.all([
+    const [s, i, ev, w, l, m, se, td, tr, ms, att, sch, pb, ex, rp] = await Promise.all([
       supabase.from('subjects').select('*').eq('team_id', teamId),
       supabase.from('health_incidents').select('*').eq('team_id', teamId),
       supabase.from('evaluations').select('*').eq('team_id', teamId),
@@ -8768,6 +9346,12 @@ export default function App() {
       supabase.from('match_stats').select('*'),
       supabase.from('attendance').select('*').eq('team_id', teamId),
       supabase.from('training_schedules').select('*').eq('team_id', teamId),
+      // Tarea 32: plan_blocks
+      supabase.from('plan_blocks').select('*').eq('team_id', teamId),
+      // Tarea 33: exercises
+      supabase.from('exercises').select('*').eq('team_id', teamId).order('created_at', { ascending: false }),
+      // Tarea 34: rehab_protocols
+      supabase.from('rehab_protocols').select('*').eq('team_id', teamId),
     ]);
     if (s.data) setSubjects(s.data.map(mapSubject));
     if (i.data) setIncidents(i.data.map(mapIncident));
@@ -8781,6 +9365,17 @@ export default function App() {
     if (ms.data) setMatchStats(ms.data.map(mapMatchStat));
     if (att.data) setAttendanceRecords(att.data.map(mapAttendance));
     if (sch.data) setTrainingSchedules(sch.data.map(mapTrainingSchedule));
+    if (pb.data) setPlanBlocks(pb.data.map((b: any) => ({ id: b.id, weekKey: b.week_key, periodType: b.period_type as SeasonPeriod })));
+    if (ex.data) setExercises(ex.data.map((e: any) => ({
+      id: e.id, teamId: e.team_id, coachId: e.coach_id,
+      name: e.name, category: e.category as ExerciseCategory,
+      description: e.description, imageUrl: e.image_url,
+      tags: e.tags || [], createdAt: e.created_at,
+    })));
+    if (rp.data) setRehabProtocols(rp.data.map((r: any) => ({
+      id: r.id, teamId: r.team_id, incidentId: r.incident_id,
+      name: r.name, phases: r.phases || [], createdAt: r.created_at,
+    })));
   };
 
   const fetchPlayerData = async (playerId: string) => {
@@ -9059,6 +9654,93 @@ export default function App() {
     showToast('success', 'Incidencia eliminada');
   };
 
+  // ── TAREA 32: Plan blocks (Supabase) ──────────────────────────────────────
+  const handleSavePlan = async (blocks: PlanBlock[]) => {
+    if (!isSupabaseConfigured || !activeTeam) { setPlanBlocks(blocks); return; }
+    // Replace all: delete current + insert new
+    await supabase.from('plan_blocks').delete().eq('team_id', activeTeam.id);
+    if (blocks.length > 0) {
+      await supabase.from('plan_blocks').insert(
+        blocks.map(b => ({ id: b.id === b.weekKey ? undefined : b.id, team_id: activeTeam.id, week_key: b.weekKey, period_type: b.periodType }))
+      );
+    }
+    setPlanBlocks(blocks);
+  };
+
+  // ── TAREA 33: Exercises (Biblioteca) ──────────────────────────────────────
+  const handleAddExercise = async (ex: Omit<Exercise, 'id' | 'teamId' | 'createdAt'>) => {
+    if (!isSupabaseConfigured || !activeTeam) return;
+    const { data, error } = await supabase.from('exercises').insert([{
+      team_id: activeTeam.id, coach_id: currentUser?.id,
+      name: ex.name, category: ex.category, description: ex.description,
+      image_url: ex.imageUrl, tags: ex.tags,
+    }]).select();
+    if (error) { showToast('error', 'Error al guardar ejercicio'); return; }
+    if (data?.[0]) {
+      const mapped: Exercise = {
+        id: data[0].id, teamId: data[0].team_id, coachId: data[0].coach_id,
+        name: data[0].name, category: data[0].category,
+        description: data[0].description, imageUrl: data[0].image_url,
+        tags: data[0].tags || [], createdAt: data[0].created_at,
+      };
+      setExercises(prev => [mapped, ...prev]);
+    }
+    showToast('success', 'Ejercicio añadido a la biblioteca');
+    setIsAddingExercise(false);
+  };
+
+  const handleDeleteExercise = async (id: string) => {
+    if (!isSupabaseConfigured) { setExercises(prev => prev.filter(e => e.id !== id)); return; }
+    await supabase.from('exercises').delete().eq('id', id);
+    setExercises(prev => prev.filter(e => e.id !== id));
+    showToast('success', 'Ejercicio eliminado');
+  };
+
+  const handleUploadExerciseImage = async (file: File): Promise<string | null> => {
+    if (!isSupabaseConfigured || !activeTeam) return null;
+    const ext = file.name.split('.').pop();
+    const path = `${activeTeam.id}/${Date.now()}.${ext}`;
+    const { data, error } = await supabase.storage.from('exercise-images').upload(path, file, { upsert: true });
+    if (error) { showToast('error', 'Error subiendo imagen'); return null; }
+    const { data: urlData } = supabase.storage.from('exercise-images').getPublicUrl(data.path);
+    return urlData.publicUrl;
+  };
+
+  // ── TAREA 34: Rehab protocols ──────────────────────────────────────────────
+  const handleSaveRehabProtocol = async (protocol: Omit<RehabProtocol, 'id' | 'createdAt'>) => {
+    if (!isSupabaseConfigured || !activeTeam) return;
+    const { data, error } = await supabase.from('rehab_protocols').insert([{
+      team_id: activeTeam.id, incident_id: protocol.incidentId,
+      name: protocol.name, phases: protocol.phases,
+    }]).select();
+    if (error) { showToast('error', 'Error al guardar protocolo'); return; }
+    if (data?.[0]) {
+      const mapped: RehabProtocol = {
+        id: data[0].id, teamId: data[0].team_id, incidentId: data[0].incident_id,
+        name: data[0].name, phases: data[0].phases || [], createdAt: data[0].created_at,
+      };
+      setRehabProtocols(prev => [...prev, mapped]);
+    }
+    showToast('success', 'Protocolo de readaptación guardado');
+  };
+
+  const handleUpdateRehabProtocol = async (id: string, updates: Partial<RehabProtocol>) => {
+    if (!isSupabaseConfigured) return;
+    const dbUpdates: any = {};
+    if (updates.name) dbUpdates.name = updates.name;
+    if (updates.phases) dbUpdates.phases = updates.phases;
+    const { error } = await supabase.from('rehab_protocols').update(dbUpdates).eq('id', id);
+    if (error) { showToast('error', 'Error actualizando protocolo'); return; }
+    setRehabProtocols(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  const handleDeleteRehabProtocol = async (id: string) => {
+    if (!isSupabaseConfigured) { setRehabProtocols(prev => prev.filter(p => p.id !== id)); return; }
+    await supabase.from('rehab_protocols').delete().eq('id', id);
+    setRehabProtocols(prev => prev.filter(p => p.id !== id));
+    showToast('success', 'Protocolo eliminado');
+  };
+
   const handleAddEvaluation = async (evaluation: QualitativeReport) => {
     if (!isSupabaseConfigured) return;
     const { error } = await supabase.from('evaluations').insert([{
@@ -9253,7 +9935,18 @@ export default function App() {
           showToast={showToast} />
       );
       case 'planning': return (
-        <PlanningView sessions={sessions} loadRecords={loadRecords} teamId={activeTeam?.id} />
+        <PlanningView sessions={sessions} loadRecords={loadRecords} teamId={activeTeam?.id}
+          initialPlanBlocks={planBlocks} onSavePlan={handleSavePlan} />
+      );
+      case 'biblioteca': return (
+        <ExercisesView
+          exercises={exercises.filter(e => e.teamId === activeTeam?.id || !activeTeam)}
+          teamId={activeTeam?.id}
+          onAdd={handleAddExercise}
+          onDelete={handleDeleteExercise}
+          onUploadImage={handleUploadExerciseImage}
+          showToast={showToast}
+        />
       );
       case 'wellness': // fallthrough — Wellness ahora vive dentro de Salud
       case 'health': return (
@@ -9262,7 +9955,12 @@ export default function App() {
           onAddIncident={handleAddIncident} onUpdateIncident={handleUpdateIncident}
           onDeleteIncident={handleDeleteIncident}
           isAddingIncident={isAddingIncident} setIsAddingIncident={setIsAddingIncident}
-          showToast={showToast} onSaveWellness={handleAddWellness} />
+          showToast={showToast} onSaveWellness={handleAddWellness}
+          rehabProtocols={rehabProtocols}
+          onSaveRehabProtocol={handleSaveRehabProtocol}
+          onUpdateRehabProtocol={handleUpdateRehabProtocol}
+          onDeleteRehabProtocol={handleDeleteRehabProtocol}
+        />
       );
       case 'reports': return (
         <ReportsView subjects={teamSubjects} incidents={incidents} evaluations={evaluations}
@@ -9421,7 +10119,7 @@ export default function App() {
             onSaved={async () => {
               setGlobalRPETarget(null);
               await fetchAllTeamsOverview(teams);
-              showToast('RPE guardado ✓', 'success');
+              showToast('success', 'RPE guardado ✓');
             }}
           />
         )}

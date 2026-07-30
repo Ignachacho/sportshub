@@ -3146,6 +3146,10 @@ const DashboardView = ({
   const [widgets, setWidgets] = useState<WidgetCfg[]>(() => getDashCfg(coachId || 'default'));
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [rpeModalOpen, setRpeModalOpen] = useState(false);
+  const [rpeSession, setRpeSession] = useState<string>('');
+  const [rpeValues, setRpeValues] = useState<Record<string, number>>({});
+  const [rpeSaving, setRpeSaving] = useState(false);
 
   const toggleWidget = (id: string) => {
     const next = widgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w);
@@ -3327,43 +3331,79 @@ const DashboardView = ({
       </div>
     ),
 
-    availability: (
-      <div key="availability" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <div>
-            <h3 className="font-black text-white text-sm">Disponibilidad del Equipo</h3>
-            <p className="text-[9px] text-slate-500 font-mono mt-0.5">Wellness hoy + carga de ayer → riesgo estimado</p>
+    availability: (() => {
+      const acwrColor = (v: number) => {
+        if (v < 0.8) return { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'BAJO', bar: '#3b82f6' };
+        if (v <= 1.3) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'ÓPTIMO', bar: '#10b981' };
+        if (v <= 1.5) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30', label: 'PRECAUCIÓN', bar: '#eab308' };
+        return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'RIESGO', bar: '#ef4444' };
+      };
+      const playerACWR = players.map(p => {
+        const acwr = calculateACWR(loadRecords, sessions, p.id);
+        const load7 = (() => {
+          const w7 = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+          return Math.round(loadRecords.filter(l => {
+            const s = sessions.find(x => x.id === l.sessionId);
+            return l.subjectId === p.id && s && s.date >= w7;
+          }).reduce((a, l) => a + (l.sessionLoad || 0), 0));
+        })();
+        const hasIncident = activeIncidents.some(i => i.subjectId === p.id);
+        return { player: p, acwr, load7, hasIncident };
+      }).sort((a, b) => (b.acwr || 0) - (a.acwr || 0));
+
+      return (
+        <div key="availability" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+            <div>
+              <h3 className="font-black text-white text-sm">Disponibilidad del Equipo</h3>
+              <p className="text-[9px] text-slate-500 font-mono mt-0.5">ACWR = carga aguda 7d / crónica 28d · zona óptima 0.8–1.3</p>
+            </div>
+            <button onClick={() => setRpeModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 transition-all">
+              <Zap size={11} /> RPE post-sesión
+            </button>
           </div>
-          <button onClick={() => onNavigate('wellness')} className="text-[9px] font-bold text-emerald-500 hover:underline uppercase tracking-wider">Registrar Wellness →</button>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
+                <tr>
+                  <th className="px-6 py-3">#</th><th className="px-6 py-3">Jugador</th>
+                  <th className="px-6 py-3 text-center">Carga 7d (AU)</th>
+                  <th className="px-6 py-3 text-center">ACWR</th>
+                  <th className="px-6 py-3 text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {playerACWR.map(({ player, acwr, load7, hasIncident }) => {
+                  const ac = acwr !== null ? acwrColor(acwr) : null;
+                  return (
+                    <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
+                      <td className="px-6 py-3 text-[10px] font-mono text-slate-600">#{player.number}</td>
+                      <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{player.name}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
+                      <td className="px-6 py-3 text-center text-[10px] text-slate-400 font-mono">{load7 > 0 ? `${load7} AU` : '—'}</td>
+                      <td className="px-6 py-3 text-center">
+                        {acwr !== null ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(acwr / 2, 1) * 100}%`, background: ac?.bar }} />
+                            </div>
+                            <span className={cn("text-xs font-black", ac?.text)}>{acwr.toFixed(2)}</span>
+                          </div>
+                        ) : <span className="text-[10px] text-slate-700">Sin datos</span>}
+                      </td>
+                      <td className="px-6 py-3 text-center">
+                        {ac ? <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", ac.bg, ac.text, ac.border)}>{ac.label}</span>
+                          : <span className="text-[9px] text-slate-700">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-950/60 text-[8px] font-bold text-slate-600 uppercase tracking-widest">
-              <tr>
-                <th className="px-6 py-3">#</th><th className="px-6 py-3">Jugador</th>
-                <th className="px-6 py-3 text-center">Wellness</th><th className="px-6 py-3 text-center">Carga Ayer</th>
-                <th className="px-6 py-3 text-center">Riesgo</th><th className="px-6 py-3 text-center">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {playerReadiness.map(({ player, wellness, risk, hasIncident, yLoad }) => {
-                const rc = risk !== null ? getRiskColor(risk) : null;
-                return (
-                  <tr key={player.id} className="hover:bg-slate-950/30 transition-colors">
-                    <td className="px-6 py-3 text-[10px] font-mono text-slate-600">#{player.number}</td>
-                    <td className="px-6 py-3"><div className="flex items-center gap-2"><span className="text-sm font-bold text-white">{player.name}</span>{hasIncident && <AlertCircle size={12} className="text-red-400" />}</div></td>
-                    <td className="px-6 py-3 text-center">{wellness !== null ? <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", wellness <= 3.5 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400')}>{wellness.toFixed(1)}/5</span> : <span className="text-[10px] text-slate-700">—</span>}</td>
-                    <td className="px-6 py-3 text-center text-[10px] text-slate-500 font-mono">{yLoad > 0 ? `${Math.round(yLoad)} AU` : '—'}</td>
-                    <td className="px-6 py-3 text-center">{risk !== null ? <div className="flex items-center justify-center gap-2"><div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={cn("h-full rounded-full", rc?.bg)} style={{ width: `${risk}%` }} /></div><span className={cn("text-[9px] font-bold", rc?.text)}>{risk}%</span></div> : <span className="text-[10px] text-slate-700">—</span>}</td>
-                    <td className="px-6 py-3 text-center">{risk !== null ? <span className={cn("text-[8px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border", rc?.bg.replace('500', '500/15'), rc?.text, rc?.border)}>{rc?.label}</span> : <span className="text-[9px] text-slate-700">Sin datos</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    ),
+      );
+    })(),
 
     sessions: recentSessions.length > 0 ? (
       <div key="sessions" className="bg-slate-900 border border-slate-800 rounded-[24px] overflow-hidden">
@@ -3401,6 +3441,115 @@ const DashboardView = ({
 
       {/* Widgets en orden */}
       {widgets.filter(w => w.visible).map(w => widgetMap[w.id])}
+
+      {/* Modal RPE Post-Sesión */}
+      {rpeModalOpen && (() => {
+        const recentForRpe = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+        const selectedSession = sessions.find(s => s.id === rpeSession);
+        const handleSaveRpe = async () => {
+          if (!selectedSession) return;
+          setRpeSaving(true);
+          try {
+            const records = players
+              .filter(p => (rpeValues[p.id] ?? 0) > 0)
+              .map(p => {
+                const rpe = rpeValues[p.id];
+                const load = rpe * (selectedSession.durationMins || 60);
+                return {
+                  team_id: selectedSession.teamId,
+                  session_id: selectedSession.id,
+                  subject_id: p.id,
+                  borg_scale: rpe,
+                  duration_mins: selectedSession.durationMins || 60,
+                  session_load: load,
+                };
+              });
+            if (records.length > 0) {
+              await supabase.from('load_records').upsert(records, { onConflict: 'session_id,subject_id' });
+            }
+            setRpeModalOpen(false);
+            setRpeValues({});
+            setRpeSession('');
+          } finally {
+            setRpeSaving(false);
+          }
+        };
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRpeModalOpen(false)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-[24px] p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-black text-white text-sm">Registrar RPE Post-Sesión</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Selecciona sesión · Introduce RPE 1–10 por jugador · Carga = RPE × minutos</p>
+                </div>
+                <button onClick={() => setRpeModalOpen(false)} className="text-slate-600 hover:text-white transition-colors"><X size={18} /></button>
+              </div>
+
+              {/* Selector de sesión */}
+              <div className="mb-5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Sesión</label>
+                <select value={rpeSession} onChange={e => setRpeSession(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <option value="">— Seleccionar sesión —</option>
+                  {recentForRpe.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {new Date(s.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} · {s.title || 'Sesión'} ({s.durationMins || 60} min)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tabla de jugadores + RPE */}
+              {rpeSession && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 mb-1">
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Jugador</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-center w-20">RPE (1–10)</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-right w-20">Carga (AU)</span>
+                  </div>
+                  {players.map(p => {
+                    const rpe = rpeValues[p.id] ?? 0;
+                    const load = rpe > 0 ? rpe * (selectedSession?.durationMins || 60) : 0;
+                    return (
+                      <div key={p.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2.5 bg-slate-800 rounded-xl border border-slate-700">
+                        <div>
+                          <span className="text-xs font-bold text-white">{p.name}</span>
+                          <span className="text-[9px] text-slate-600 ml-2 font-mono">#{p.number}</span>
+                        </div>
+                        <input
+                          type="number" min={0} max={10} step={0.5}
+                          value={rpe || ''} placeholder="—"
+                          onChange={e => {
+                            const v = Math.min(10, Math.max(0, parseFloat(e.target.value) || 0));
+                            setRpeValues(prev => ({ ...prev, [p.id]: v }));
+                          }}
+                          className="w-20 bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-emerald-500 font-mono"
+                        />
+                        <span className={cn("text-xs font-black text-right w-20 font-mono", load > 0 ? 'text-emerald-400' : 'text-slate-700')}>
+                          {load > 0 ? `${Math.round(load)} AU` : '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="flex gap-3 pt-3">
+                    <button onClick={() => {
+                      const allSame: Record<string, number> = {};
+                      players.forEach(p => { allSame[p.id] = 5; });
+                      setRpeValues(allSame);
+                    }} className="flex-1 py-2 rounded-xl border border-slate-700 text-[10px] font-bold text-slate-500 hover:text-white transition-all">
+                      Rellenar todos con 5
+                    </button>
+                    <button onClick={handleSaveRpe} disabled={rpeSaving || !rpeSession}
+                      className="flex-1 py-2 rounded-xl bg-emerald-500 text-slate-950 text-[10px] font-black uppercase hover:bg-emerald-400 transition-all disabled:opacity-50">
+                      {rpeSaving ? 'Guardando…' : `Guardar (${Object.values(rpeValues).filter(v => v > 0).length} jugadores)`}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Panel de configuración */}
       {cfgOpen && (
@@ -3772,7 +3921,7 @@ const PlayerRegistrationForm = ({
     if (!form.name) { showToast('warning', 'El nombre es obligatorio'); return; }
     setSaving(true);
     try {
-      await onSave({ ...editingPlayer, ...form, id: editingPlayer?.id || '', teamId: editingPlayer?.teamId || '', number: parseInt(form.number) || 0 } as Subject);
+      await onSave({ ...editingPlayer, ...form, id: editingPlayer?.id || '', teamId: editingPlayer?.teamId || '', number: form.number } as any);
       showToast('success', editingPlayer ? 'Jugador actualizado' : 'Jugador registrado');
     } catch (err: any) { showToast('error', 'Error al guardar: ' + (err?.message || JSON.stringify(err))); }
     finally { setSaving(false); }
@@ -3789,7 +3938,7 @@ const PlayerRegistrationForm = ({
           { label: 'Nombre', key: 'name', placeholder: 'Nombre' },
           { label: 'Apellidos', key: 'lastName', placeholder: 'Apellidos' },
           { label: 'Fecha de Nacimiento', key: 'birthDate', placeholder: '', type: 'date' },
-          { label: 'Dorsal', key: 'number', placeholder: '00', type: 'number' },
+          { label: 'Dorsal', key: 'number', placeholder: '00' },
           { label: 'Email / Contacto', key: 'contact', placeholder: 'jugador@email.com' },
           { label: 'DNI / DNA ID', key: 'dnaId', placeholder: '12345678A' },
         ].map(f => (
@@ -3841,6 +3990,13 @@ const RosterView = ({
 }) => {
   const [filterRole, setFilterRole] = useState<'ALL' | 'PLAYER' | 'STAFF'>('ALL');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'position' | 'number'>('number');
+
+  const parseNumber = (n: any) => {
+    if (n === '00') return -0.5;
+    const v = parseInt(String(n));
+    return isNaN(v) ? 999 : v;
+  };
 
   const positionOrder = ['Base', 'Escolta', 'Alero', 'Ala-Pívot', 'Pívot'];
   const filtered = subjects
@@ -3848,6 +4004,7 @@ const RosterView = ({
     .filter(s => search === '' ? true : `${s.name} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
       if (a.role !== b.role) return a.role === Role.PLAYER ? -1 : 1;
+      if (sortBy === 'number') return parseNumber(a.number) - parseNumber(b.number);
       return positionOrder.indexOf(a.position || '') - positionOrder.indexOf(b.position || '');
     });
 
@@ -3889,6 +4046,11 @@ const RosterView = ({
         <div className="flex gap-3 w-full md:w-auto">
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..."
             className="flex-1 md:w-48 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-emerald-500/50 placeholder:text-slate-600" />
+          <button onClick={() => setSortBy(s => s === 'number' ? 'position' : 'number')}
+            className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase border transition-all whitespace-nowrap",
+              sortBy === 'number' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700")}>
+            {sortBy === 'number' ? '# Dorsal' : 'Posición'}
+          </button>
           <button onClick={onPassAttendance}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold uppercase hover:bg-emerald-500/20 transition-all whitespace-nowrap">
             <Check size={14} /> Pasar Lista
@@ -3915,7 +4077,11 @@ const RosterView = ({
                 const attRate = getAttendanceRate(player.id);
                 return (
                   <tr key={player.id} className="hover:bg-slate-950/40 transition-colors group">
-                    <td className="px-5 py-3.5 text-[10px] font-mono text-slate-600">#{player.number || '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-black text-white font-mono bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5">
+                        {player.number !== undefined && player.number !== null && player.number !== '' ? `#${player.number}` : '—'}
+                      </span>
+                    </td>
                     <td className="px-5 py-3.5">
                       <button onClick={() => onPlayerClick(player)} className="flex items-center gap-3 text-left group/name">
                         <div className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-xs font-black text-white group-hover/name:bg-emerald-500 group-hover/name:text-slate-950 transition-all">

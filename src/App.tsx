@@ -36,7 +36,7 @@ import {
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
   Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList, CalendarDays,
-  Globe
+  Globe, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -764,6 +764,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',      label: 'Dashboard',        icon: BarChart3 },
   { id: 'roster',         label: 'Plantilla',        icon: Users },
   { id: 'sessions',       label: 'Sesiones',         icon: Timer },
+  { id: 'asistencia',     label: 'Asistencia',       icon: ClipboardList },
   { id: 'planning',       label: 'Planificación',    icon: CalendarDays },
   { id: 'matches',        label: 'Partidos',         icon: Trophy },
   { id: 'physical_tests', label: 'Tests Físicos',    icon: Dumbbell },
@@ -827,7 +828,7 @@ const Sidebar = ({
         {/* ── Uso diario ── */}
         <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Uso diario</p>
         <div className="space-y-0.5 mb-3">
-          {NAV_ITEMS.filter(i => ['overview','dashboard','roster','sessions','planning'].includes(i.id)).map(item => (
+          {NAV_ITEMS.filter(i => ['overview','dashboard','roster','sessions','asistencia','planning'].includes(i.id)).map(item => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
@@ -3812,6 +3813,7 @@ const MobileRPESheet = ({
   const [rpeMap, setRpeMap] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [isEditing, setIsEditing] = useState(false); // true cuando el user vuelve del paso confirm a revisar
 
   const currentPlayer = players[currentIdx];
   const allDone = players.every(p => rpeMap[p.id] !== undefined);
@@ -3900,10 +3902,16 @@ const MobileRPESheet = ({
                       return (
                         <button key={v}
                           onClick={() => {
-                            setRpeMap(prev => ({ ...prev, [currentPlayer.id]: v }));
-                            // Auto advance to next player
-                            if (currentIdx < players.length - 1) {
-                              setTimeout(() => setCurrentIdx(i => i + 1), 180);
+                            const alreadySelected = rpeMap[currentPlayer.id] === v;
+                            if (alreadySelected) {
+                              // Toggle: deseleccionar si ya estaba elegido
+                              setRpeMap(prev => { const next = { ...prev }; delete next[currentPlayer.id]; return next; });
+                            } else {
+                              setRpeMap(prev => ({ ...prev, [currentPlayer.id]: v }));
+                              // Auto-advance solo en el primer pase, no cuando se está revisando
+                              if (!isEditing && currentIdx < players.length - 1) {
+                                setTimeout(() => setCurrentIdx(i => i + 1), 180);
+                              }
                             }
                           }}
                           className={cn('h-14 rounded-2xl text-xl font-black border-2 transition-all active:scale-95',
@@ -3988,7 +3996,7 @@ const MobileRPESheet = ({
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep('rpe')} className="px-5 py-3.5 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
+                <button onClick={() => { setStep('rpe'); setIsEditing(true); }} className="px-5 py-3.5 bg-slate-800 rounded-xl text-sm font-bold text-slate-400 hover:text-white border border-slate-700 transition-all">
                   ← Editar
                 </button>
                 <button onClick={handleSave} disabled={saving || Object.keys(rpeMap).length === 0}
@@ -9140,6 +9148,320 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ATTENDANCE VIEW — registro histórico tipo Excel (jugadores × sesiones)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AttendanceView = ({
+  sessions, subjects, attendanceRecords, matches,
+}: {
+  sessions: Session[];
+  subjects: Subject[];
+  attendanceRecords: AttendanceRecord[];
+  matches: Match[];
+}) => {
+  const [filterType, setFilterType] = useState<'all' | 'training' | 'match'>('training');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [search, setSearch] = useState('');
+
+  // Filtrar solo jugadores (no staff)
+  const players = useMemo(
+    () => subjects.filter(s => s.role === 'PLAYER').sort((a, b) => (a.number ?? 99) - (b.number ?? 99)),
+    [subjects]
+  );
+
+  // Construir lista de "eventos" (sesiones + partidos) ordenados por fecha
+  type AttEvent = { id: string; date: string; label: string; type: 'training' | 'match' };
+  const allEvents = useMemo<AttEvent[]>(() => {
+    const trainingSessions = sessions.map(s => ({
+      id: s.id, date: s.date.slice(0, 10),
+      label: s.title || 'Entrenamiento', type: 'training' as const,
+    }));
+    const matchEvents = matches.map(m => ({
+      id: m.id, date: m.date.slice(0, 10),
+      label: `vs ${m.opponent}`, type: 'match' as const,
+    }));
+    return [...trainingSessions, ...matchEvents].sort((a, b) => a.date.localeCompare(b.date));
+  }, [sessions, matches]);
+
+  // Meses disponibles
+  const months = useMemo(() => {
+    const set = new Set(allEvents.map(e => e.date.slice(0, 7)));
+    return Array.from(set).sort();
+  }, [allEvents]);
+
+  // Eventos filtrados
+  const filteredEvents = useMemo(() => {
+    let evs = allEvents;
+    if (filterType !== 'all') evs = evs.filter(e => e.type === filterType);
+    if (filterMonth !== 'all') evs = evs.filter(e => e.date.startsWith(filterMonth));
+    return evs;
+  }, [allEvents, filterType, filterMonth]);
+
+  // Mapa rápido: sessionId/matchId → status por subjectId
+  const attMap = useMemo(() => {
+    const m: Record<string, Record<string, string>> = {};
+    attendanceRecords.forEach(r => {
+      const sid = r.sessionId ?? r.eventId ?? '';
+      if (!m[sid]) m[sid] = {};
+      m[sid][r.subjectId] = r.status;
+    });
+    return m;
+  }, [attendanceRecords]);
+
+  const filteredPlayers = players.filter(p =>
+    `${p.name} ${p.lastName ?? ''}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Colores por status
+  const statusColor = (status: string | undefined) => {
+    if (!status) return 'bg-slate-800 text-slate-600';
+    if (status === 'present') return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    if (status === 'absent') return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    if (status === 'late') return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    if (status === 'excused') return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+    return 'bg-slate-800 text-slate-600';
+  };
+  const statusLabel = (status: string | undefined) => {
+    if (status === 'present') return 'SI';
+    if (status === 'absent') return 'NO';
+    if (status === 'late') return 'TAR';
+    if (status === 'excused') return 'JUS';
+    return '—';
+  };
+
+  // Cálculo de % por jugador
+  const playerStats = (playerId: string) => {
+    const relevant = filteredEvents.filter(e => attMap[e.id]?.[playerId] !== undefined);
+    const present = relevant.filter(e => attMap[e.id]?.[playerId] === 'present' || attMap[e.id]?.[playerId] === 'late').length;
+    const absent = relevant.filter(e => attMap[e.id]?.[playerId] === 'absent').length;
+    const pct = relevant.length > 0 ? Math.round((present / relevant.length) * 100) : null;
+    return { present, absent, total: relevant.length, pct };
+  };
+
+  // Cálculo de presentes por sesión (para fila de totales)
+  const eventTotals = (eventId: string) => {
+    const present = filteredPlayers.filter(p =>
+      attMap[eventId]?.[p.id] === 'present' || attMap[eventId]?.[p.id] === 'late'
+    ).length;
+    const total = filteredPlayers.filter(p => attMap[eventId]?.[p.id] !== undefined).length;
+    return { present, total };
+  };
+
+  const formatDateHeader = (dateStr: string) => {
+    const d = new Date(dateStr + 'T12:00:00');
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+    return { day, month };
+  };
+
+  const monthLabel = (m: string) => {
+    const d = new Date(m + '-01T12:00:00');
+    return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-5 h-full overflow-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-black text-white flex items-center gap-2">
+            <ClipboardList size={20} className="text-emerald-400" />
+            Registro de Asistencia
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">Histórico completo · {filteredEvents.length} sesiones · {filteredPlayers.length} jugadores</p>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Tipo */}
+        <div className="flex bg-slate-800 rounded-xl p-1 gap-0.5">
+          {(['all', 'training', 'match'] as const).map(t => (
+            <button key={t} onClick={() => setFilterType(t)}
+              className={cn('px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                filterType === t ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white')}>
+              {t === 'all' ? 'Todo' : t === 'training' ? 'Entrenamientos' : 'Partidos'}
+            </button>
+          ))}
+        </div>
+        {/* Mes */}
+        <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+          <option value="all">Todos los meses</option>
+          {months.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
+        </select>
+        {/* Búsqueda */}
+        <div className="relative flex-1 min-w-[160px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador…"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex gap-3 flex-wrap text-[10px]">
+        {[
+          { label: 'Presente', cls: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+          { label: 'Falta', cls: 'bg-red-500/20 text-red-400 border border-red-500/30' },
+          { label: 'Tarde', cls: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' },
+          { label: 'Justificada', cls: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+          { label: 'Sin datos', cls: 'bg-slate-800 text-slate-600' },
+        ].map(l => (
+          <div key={l.label} className="flex items-center gap-1.5">
+            <span className={cn('w-5 h-5 rounded flex items-center justify-center font-bold', l.cls)}>·</span>
+            <span className="text-slate-500">{l.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {filteredEvents.length === 0 ? (
+        <div className="text-center py-16 text-slate-500">
+          <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
+          <p className="font-bold">Sin sesiones en este filtro</p>
+          <p className="text-xs mt-1">Cambia el tipo o el mes seleccionado</p>
+        </div>
+      ) : (
+        /* Grid principal con scroll horizontal */
+        <div className="rounded-2xl border border-slate-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="border-collapse min-w-full">
+              <thead>
+                {/* Fila de fechas */}
+                <tr className="bg-slate-900 border-b border-slate-800">
+                  {/* Columnas fijas */}
+                  <th className="sticky left-0 z-10 bg-slate-900 px-3 py-2 text-left text-[9px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-800 min-w-[40px]">#</th>
+                  <th className="sticky left-[40px] z-10 bg-slate-900 px-3 py-2 text-left text-[9px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-800 min-w-[130px]">Jugador</th>
+                  <th className="sticky left-[170px] z-10 bg-slate-900 px-2 py-2 text-center text-[9px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-800 min-w-[44px]">%</th>
+                  <th className="sticky left-[214px] z-10 bg-slate-900 px-2 py-2 text-center text-[9px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-800 min-w-[36px]">SI</th>
+                  <th className="sticky left-[250px] z-10 bg-slate-900 px-2 py-2 text-center text-[9px] font-bold text-slate-500 uppercase tracking-widest border-r border-slate-800 min-w-[36px]">NO</th>
+                  {/* Una columna por evento */}
+                  {filteredEvents.map(ev => {
+                    const { day, month } = formatDateHeader(ev.date);
+                    return (
+                      <th key={ev.id} className={cn(
+                        'px-1 py-2 text-center min-w-[36px] border-r border-slate-800/50',
+                        ev.type === 'match' ? 'bg-violet-950/40' : 'bg-slate-900'
+                      )}>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] font-black text-white leading-none">{day}</span>
+                          <span className="text-[7px] text-slate-500 uppercase leading-none mt-0.5">{month}</span>
+                          {ev.type === 'match' && <span className="text-[6px] text-violet-400 mt-0.5">⚽</span>}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlayers.map((player, rowIdx) => {
+                  const stats = playerStats(player.id);
+                  const pctColor = stats.pct === null ? 'text-slate-500' : stats.pct >= 90 ? 'text-emerald-400' : stats.pct >= 75 ? 'text-amber-400' : 'text-red-400';
+                  return (
+                    <tr key={player.id} className={cn('border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors', rowIdx % 2 === 0 ? 'bg-slate-950/20' : '')}>
+                      {/* Columnas fijas */}
+                      <td className="sticky left-0 z-10 bg-slate-900 px-3 py-2 text-center text-xs font-bold text-slate-400 border-r border-slate-800">
+                        {player.number ?? '—'}
+                      </td>
+                      <td className="sticky left-[40px] z-10 bg-slate-900 px-3 py-2 border-r border-slate-800 min-w-[130px]">
+                        <span className="text-xs font-bold text-white whitespace-nowrap">{player.name} {player.lastName ?? ''}</span>
+                      </td>
+                      <td className={cn('sticky left-[170px] z-10 bg-slate-900 px-2 py-2 text-center text-xs font-black border-r border-slate-800', pctColor)}>
+                        {stats.pct !== null ? `${stats.pct}%` : '—'}
+                      </td>
+                      <td className="sticky left-[214px] z-10 bg-slate-900 px-2 py-2 text-center text-xs font-bold text-emerald-400 border-r border-slate-800">
+                        {stats.present}
+                      </td>
+                      <td className="sticky left-[250px] z-10 bg-slate-900 px-2 py-2 text-center text-xs font-bold text-red-400 border-r border-slate-800">
+                        {stats.absent}
+                      </td>
+                      {/* Celda por evento */}
+                      {filteredEvents.map(ev => {
+                        const status = attMap[ev.id]?.[player.id];
+                        return (
+                          <td key={ev.id} className="px-0.5 py-1.5 text-center border-r border-slate-800/30">
+                            <span className={cn(
+                              'inline-flex items-center justify-center w-7 h-6 rounded text-[9px] font-bold',
+                              statusColor(status)
+                            )}>
+                              {statusLabel(status)}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+
+                {/* Fila de totales por sesión */}
+                <tr className="bg-slate-900/80 border-t-2 border-slate-700">
+                  <td className="sticky left-0 z-10 bg-slate-900 border-r border-slate-800" />
+                  <td className="sticky left-[40px] z-10 bg-slate-900 px-3 py-2 border-r border-slate-800">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total sesión</span>
+                  </td>
+                  <td className="sticky left-[170px] z-10 bg-slate-900 border-r border-slate-800" />
+                  <td className="sticky left-[214px] z-10 bg-slate-900 border-r border-slate-800" />
+                  <td className="sticky left-[250px] z-10 bg-slate-900 border-r border-slate-800" />
+                  {filteredEvents.map(ev => {
+                    const { present, total } = eventTotals(ev.id);
+                    const pct = total > 0 ? Math.round((present / total) * 100) : null;
+                    return (
+                      <td key={ev.id} className="px-0.5 py-1.5 text-center border-r border-slate-800/30">
+                        <div className="flex flex-col items-center">
+                          <span className={cn('text-[9px] font-bold leading-none', pct !== null && pct >= 80 ? 'text-emerald-400' : pct !== null ? 'text-amber-400' : 'text-slate-600')}>
+                            {present > 0 ? present : '—'}
+                          </span>
+                          {total > 0 && <span className="text-[7px] text-slate-600 leading-none mt-0.5">/{total}</span>}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Resumen tarjetas */}
+      {filteredPlayers.length > 0 && filteredEvents.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            {
+              label: 'Asistencia media',
+              value: (() => {
+                const percs = filteredPlayers.map(p => playerStats(p.id).pct).filter(v => v !== null) as number[];
+                return percs.length ? Math.round(percs.reduce((a,b)=>a+b,0)/percs.length) + '%' : '—';
+              })(),
+              color: 'text-emerald-400',
+            },
+            {
+              label: 'Total sesiones',
+              value: filteredEvents.length,
+              color: 'text-white',
+            },
+            {
+              label: 'Faltas registradas',
+              value: filteredPlayers.reduce((acc, p) => acc + playerStats(p.id).absent, 0),
+              color: 'text-red-400',
+            },
+            {
+              label: 'Jugadores seguidos',
+              value: filteredPlayers.length,
+              color: 'text-slate-300',
+            },
+          ].map(card => (
+            <div key={card.label} className="bg-slate-800/60 rounded-2xl p-4 text-center border border-slate-700/50">
+              <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
+              <p className={cn('text-2xl font-black', card.color)}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // APP — MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -9915,6 +10237,14 @@ export default function App() {
           onGenerateSessions={handleGenerateSessions}
           initialSession={todaySessionTarget}
           onSessionOpened={() => setTodaySessionTarget(null)} />
+      );
+      case 'asistencia': return (
+        <AttendanceView
+          sessions={sessions}
+          subjects={teamSubjects}
+          attendanceRecords={attendanceRecords}
+          matches={matches}
+        />
       );
       case 'matches': return (
         <MatchesView matches={matches} onAddMatch={handleAddMatch} subjects={teamSubjects}

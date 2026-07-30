@@ -35,7 +35,8 @@ import {
   Info, CheckCircle, Clock, MapPin, Zap, Target, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, Printer, Send, Filter, LogOut, User, Shield, Trash2,
   Dumbbell, Timer, BookOpen, Star, AlertCircle, MoreVertical, Copy,
-  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList, CalendarDays
+  Download, Eye, EyeOff, Minus, Plus, RotateCcw, ChevronLeft, Menu, GripVertical, ClipboardList, CalendarDays,
+  Globe, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -737,7 +738,7 @@ const TeamSelectionView = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { id: 'today',          label: 'Hoy',              icon: CheckCircle },
+  { id: 'overview',       label: 'Visión General',   icon: Globe },
   { id: 'dashboard',      label: 'Dashboard',        icon: BarChart3 },
   { id: 'roster',         label: 'Plantilla',        icon: Users },
   { id: 'sessions',       label: 'Sesiones',         icon: Timer },
@@ -782,11 +783,20 @@ const Sidebar = ({
         </span>
       </div>
 
-      {/* Active team */}
+      {/* Active team / overview toggle */}
       <div className="mb-6 p-3 bg-slate-950 border border-slate-800 rounded-2xl">
-        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1">Equipo activo</p>
-        <p className="text-xs font-bold text-white truncate">{activeTeam?.name || '—'}</p>
-        <button onClick={onSwitchTeam} className="text-[9px] text-emerald-500 font-bold mt-1 hover:underline uppercase tracking-wide">Cambiar equipo →</button>
+        {activeTab === 'overview' || !activeTeam ? (
+          <>
+            <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1">Vista</p>
+            <p className="text-xs font-bold text-white">Todos los equipos</p>
+          </>
+        ) : (
+          <>
+            <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1">Equipo activo</p>
+            <p className="text-xs font-bold text-white truncate">{activeTeam.name}</p>
+            <button onClick={() => setActiveTab('overview')} className="text-[9px] text-emerald-500 font-bold mt-1 hover:underline uppercase tracking-wide">← Visión General</button>
+          </>
+        )}
       </div>
 
       {/* Nav */}
@@ -794,7 +804,7 @@ const Sidebar = ({
         {/* ── Uso diario ── */}
         <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-3 mb-1.5">Uso diario</p>
         <div className="space-y-0.5 mb-3">
-          {NAV_ITEMS.filter(i => ['today','dashboard','roster','sessions','planning'].includes(i.id)).map(item => (
+          {NAV_ITEMS.filter(i => ['overview','dashboard','roster','sessions','planning'].includes(i.id)).map(item => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all",
@@ -804,7 +814,7 @@ const Sidebar = ({
               )}>
               <div className="relative">
                 <item.icon size={16} />
-                {item.id === 'today' && notifCount && notifCount > 0 ? (
+                {item.id === 'overview' && notifCount && notifCount > 0 ? (
                   <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] font-black text-white flex items-center justify-center shadow-sm">
                     {notifCount > 9 ? '9+' : notifCount}
                   </span>
@@ -878,7 +888,7 @@ const Sidebar = ({
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-stretch h-16">
           {[
-            { id: 'today',    label: 'Hoy',          icon: CheckCircle },
+            { id: 'overview', label: 'General',      icon: Globe },
             { id: 'roster',   label: 'Plantilla',    icon: Users },
             { id: 'sessions', label: 'Sesiones',     icon: Timer },
             { id: 'planning', label: 'Plan',         icon: CalendarDays },
@@ -892,7 +902,7 @@ const Sidebar = ({
               )}>
               <div className="relative">
                 <item.icon size={22} />
-                {item.id === 'today' && notifCount && notifCount > 0 ? (
+                {item.id === 'overview' && notifCount && notifCount > 0 ? (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center shadow">
                     {notifCount > 9 ? '9+' : notifCount}
                   </span>
@@ -3469,6 +3479,286 @@ const getDashCfg = (coachId: string): WidgetCfg[] => {
 };
 const saveDashCfg = (coachId: string, cfg: WidgetCfg[]) =>
   localStorage.setItem(`ck_dash_${coachId}`, JSON.stringify(cfg));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERVIEW VIEW — visión general multi-equipo del coach
+// ─────────────────────────────────────────────────────────────────────────────
+
+type TeamSnapshot = {
+  subjects: Subject[]; sessions: Session[]; loadRecords: LoadRecord[];
+  attendanceRecords: AttendanceRecord[]; incidents: HealthIncident[]; matches: Match[];
+};
+
+const OverviewView = ({
+  teams, allTeamsData, loading, currentUser, seasonPeriod,
+  onEnterTeam, onRPEExpress,
+}: {
+  teams: Team[];
+  allTeamsData: Record<string, TeamSnapshot>;
+  loading: boolean;
+  currentUser: any;
+  seasonPeriod: SeasonPeriod;
+  onEnterTeam: (team: Team, tab: string) => void;
+  onRPEExpress: (team: Team, session: Session) => void;
+}) => {
+  const today = localDateStr(new Date());
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const acwrWarnThreshold = PERIOD_CFG[seasonPeriod].acwrWarn;
+
+  // Compute card data for each team
+  const cards = teams.map(team => {
+    const data = allTeamsData[team.id];
+    if (!data) return { team, ready: false };
+
+    const players = data.subjects.filter(s => s.role === Role.PLAYER);
+    const todaySessions = data.sessions.filter(s => s.date?.toString().startsWith(today));
+    const activeIncidents = data.incidents.filter(i => i.status === 'active');
+    const monitoringIncidents = data.incidents.filter(i => i.status === 'monitoring');
+
+    // Session status
+    const sessionInfo = todaySessions.map(s => {
+      const att = data.attendanceRecords.filter(a => a.sessionId === s.id);
+      const load = data.loadRecords.filter(l => l.sessionId === s.id && (l.sessionLoad || 0) > 0);
+      const status = att.length > 0 && load.length > 0 ? 'done'
+        : att.length > 0 || load.length > 0 ? 'partial' : 'pending';
+      return { session: s, status };
+    });
+
+    // ACWR alerts
+    const acwrData = players.map(p => ({ p, acwr: calculateACWR(data.loadRecords, data.sessions, p.id) }));
+    const redZone  = acwrData.filter(x => x.acwr !== null && x.acwr > 1.5);
+    const warnZone = acwrData.filter(x => x.acwr !== null && x.acwr > acwrWarnThreshold && x.acwr <= 1.5);
+
+    // Next match
+    const nextMatch = data.matches
+      .filter(m => m.status === 'SCHEDULED' && m.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const daysToMatch = nextMatch
+      ? Math.ceil((new Date(nextMatch.date).getTime() - now.getTime()) / 86400000)
+      : null;
+
+    // Traffic light
+    const hasPending = sessionInfo.some(s => s.status === 'pending' || s.status === 'partial');
+    let light: 'red' | 'yellow' | 'green' = 'green';
+    if (redZone.length > 0 || activeIncidents.length > 0) light = 'red';
+    else if (warnZone.length > 0 || hasPending || monitoringIncidents.length > 0) light = 'yellow';
+
+    return { team, ready: true, players, todaySessions, sessionInfo, activeIncidents, monitoringIncidents, redZone, warnZone, nextMatch, daysToMatch, light };
+  });
+
+  const lightStyle = {
+    green:  { dot: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]', label: 'Sin alertas',  text: 'text-emerald-400' },
+    yellow: { dot: 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.7)]',  label: 'Atención',    text: 'text-yellow-400' },
+    red:    { dot: 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]',    label: 'Alerta',      text: 'text-red-400' },
+  };
+
+  const totalAlerts = cards.filter(c => c.ready && (c.light === 'red' || c.light === 'yellow')).length;
+  const totalPlayers = cards.reduce((acc, c) => acc + (c.ready ? (c.players?.length || 0) : 0), 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+          {now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+        <h1 className="text-2xl font-black text-white mt-0.5">
+          {greeting}{currentUser?.name ? `, ${currentUser.name.split(' ')[0]}` : ''} 👋
+        </h1>
+        {/* Global summary chips */}
+        <div className="flex gap-2 flex-wrap mt-3">
+          <span className="text-[10px] font-bold text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+            {teams.length} {teams.length === 1 ? 'equipo' : 'equipos'}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+            {totalPlayers} jugadores
+          </span>
+          {totalAlerts > 0 && (
+            <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 px-3 py-1.5 rounded-xl">
+              ⚠ {totalAlerts} {totalAlerts === 1 ? 'equipo con alertas' : 'equipos con alertas'}
+            </span>
+          )}
+          {totalAlerts === 0 && !loading && (
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 rounded-xl">
+              ✓ Todo bajo control
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex items-center gap-3 py-8 text-slate-500">
+          <Loader2 className="animate-spin" size={18} /> Cargando equipos...
+        </div>
+      )}
+
+      {/* Team cards */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {cards.map(card => {
+          if (!card.ready) {
+            return (
+              <div key={card.team.id} className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 animate-pulse">
+                <div className="h-4 bg-slate-800 rounded w-32 mb-3" />
+                <div className="h-3 bg-slate-800 rounded w-24" />
+              </div>
+            );
+          }
+
+          const ls = lightStyle[card.light!];
+          const todaySessions = card.todaySessions!;
+          const sessionInfo = card.sessionInfo!;
+
+          return (
+            <div key={card.team.id}
+              className={cn(
+                "bg-slate-900 border rounded-[24px] overflow-hidden transition-all",
+                card.light === 'red' ? 'border-red-500/30' : card.light === 'yellow' ? 'border-yellow-500/20' : 'border-slate-800'
+              )}>
+              {/* Card header */}
+              <div className="px-6 py-4 flex items-start justify-between border-b border-slate-800/60">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div className={cn("w-2 h-2 rounded-full shrink-0", ls.dot)} />
+                    <h3 className="font-black text-white text-base truncate">{card.team.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                    <span>{card.players!.length} jugadores</span>
+                    {card.activeIncidents!.length > 0 && (
+                      <span className="text-red-400 font-bold flex items-center gap-1">
+                        <AlertCircle size={10} /> {card.activeIncidents!.length} lesionado{card.activeIncidents!.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {card.monitoringIncidents!.length > 0 && (
+                      <span className="text-yellow-400 font-bold">{card.monitoringIncidents!.length} en seguimiento</span>
+                    )}
+                  </div>
+                </div>
+                <span className={cn("text-[9px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-wide border shrink-0",
+                  card.light === 'red' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
+                  card.light === 'yellow' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/25' :
+                  'bg-emerald-500/10 text-emerald-400 border-emerald-500/25')}>
+                  {ls.label}
+                </span>
+              </div>
+
+              {/* Card body */}
+              <div className="px-6 py-4 space-y-3">
+
+                {/* Today's sessions */}
+                {todaySessions.length > 0 ? (
+                  <div className="space-y-2">
+                    {sessionInfo.map(({ session, status }) => {
+                      const col = stc(session.type);
+                      const statusCfg = {
+                        done:    { label: '✓ Cerrada',  cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25' },
+                        partial: { label: '◑ Parcial',  cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25' },
+                        pending: { label: '○ Pendiente',cls: 'text-slate-500 bg-slate-800 border-slate-700' },
+                      }[status];
+                      return (
+                        <div key={session.id} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={cn('text-[8px] font-black px-2 py-0.5 rounded border shrink-0', col.bg.split(' ')[0], col.text, col.border)}>
+                              {col.label}
+                            </span>
+                            <span className="text-sm font-bold text-white truncate">{session.title || 'Sesión'}</span>
+                            <span className="text-[9px] text-slate-600">{session.durationMins}min</span>
+                          </div>
+                          <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border shrink-0', statusCfg.cls)}>
+                            {statusCfg.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-600 italic">Sin sesión hoy</p>
+                )}
+
+                {/* ACWR alerts */}
+                {(card.redZone!.length > 0 || card.warnZone!.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {card.redZone!.map(({ p, acwr }) => (
+                      <span key={p.id} className="text-[9px] font-bold px-2 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
+                        ⚡ {p.name.split(' ')[0]} ACWR {acwr!.toFixed(2)}
+                      </span>
+                    ))}
+                    {card.warnZone!.map(({ p, acwr }) => (
+                      <span key={p.id} className="text-[9px] font-bold px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                        ⚠ {p.name.split(' ')[0]} {acwr!.toFixed(2)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Next match */}
+                {card.nextMatch && (
+                  <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                    <Trophy size={11} className="text-amber-400 shrink-0" />
+                    <span>
+                      Próx. partido: <span className="text-white font-bold">vs {card.nextMatch.opponent}</span>
+                      {card.daysToMatch !== null && (
+                        <span className={cn("ml-1.5 font-black",
+                          card.daysToMatch <= 2 ? 'text-red-400' : card.daysToMatch <= 5 ? 'text-yellow-400' : 'text-slate-400')}>
+                          · en {card.daysToMatch}d
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick actions */}
+              <div className="px-4 pb-4 flex gap-2 flex-wrap">
+                {/* RPE Express — solo si hay sesión pendiente hoy */}
+                {sessionInfo.some(s => s.status !== 'done') && todaySessions.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const pending = sessionInfo.find(s => s.status !== 'done');
+                      if (pending) onRPEExpress(card.team, pending.session);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 active:scale-95 transition-all shadow-sm shadow-emerald-500/20">
+                    <Zap size={11} /> RPE Express
+                  </button>
+                )}
+                <button
+                  onClick={() => onEnterTeam(card.team, 'sessions')}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-bold text-slate-300 hover:text-white hover:border-slate-600 active:scale-95 transition-all">
+                  <Timer size={11} /> Sesiones
+                </button>
+                <button
+                  onClick={() => onEnterTeam(card.team, 'dashboard')}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-bold text-slate-300 hover:text-white hover:border-slate-600 active:scale-95 transition-all">
+                  <Users size={11} /> Disponibilidad
+                </button>
+                <button
+                  onClick={() => onEnterTeam(card.team, 'planning')}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-bold text-slate-300 hover:text-white hover:border-slate-600 active:scale-95 transition-all">
+                  <CalendarDays size={11} /> Planning
+                </button>
+                <button
+                  onClick={() => onEnterTeam(card.team, 'sessions')}
+                  className="ml-auto flex items-center gap-1 px-3 py-2 text-[10px] font-bold text-emerald-500 hover:underline active:scale-95 transition-all">
+                  Ver todo <ChevronRight size={11} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Empty state */}
+      {teams.length === 0 && !loading && (
+        <div className="py-24 text-center border-2 border-dashed border-slate-800 rounded-[28px]">
+          <Globe className="mx-auto text-slate-800 mb-3" size={36} />
+          <p className="text-slate-600 text-sm">No tienes equipos todavía</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOBILE RPE SHEET — flujo express de 3 pasos para registrar RPE post-sesión
@@ -8129,7 +8419,7 @@ const AgendaView = ({ teams }: { teams: Team[] }) => {
 export default function App() {
   // ── App status ──
   const [appStatus, setAppStatus] = useState<'LOADING' | 'LOGIN' | 'TEAM_SELECT' | 'DASHBOARD' | 'PLAYER_DASHBOARD'>('LOADING');
-  const [activeTab, setActiveTab] = useState('today');
+  const [activeTab, setActiveTab] = useState('overview');
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Subject | null>(null);
   const [viewingPlayerDetail, setViewingPlayerDetail] = useState(false);
@@ -8157,6 +8447,13 @@ export default function App() {
     localStorage.setItem(PERIOD_KEY(coachId), p);
     setSeasonPeriodState(p);
   };
+
+  // ── Overview data (snapshot por equipo para Visión General) ──
+  const [allTeamsData, setAllTeamsData] = useState<Record<string, TeamSnapshot>>({});
+  const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // ── RPE Express global (desde Visión General) ──
+  const [globalRPETarget, setGlobalRPETarget] = useState<{ session: Session; teamId: string; subjects: Subject[] } | null>(null);
 
   // ── Data ──
   const [teams, setTeams] = useState<Team[]>([]);
@@ -8251,8 +8548,52 @@ export default function App() {
     (subjectCounts || []).forEach((s: any) => { countMap[s.team_id] = (countMap[s.team_id] || 0) + 1; });
     const mapped = unique.map(t => ({ ...mapTeam(t), playersCount: countMap[t.id] || 0 }));
     setTeams(mapped);
-    if (mapped.length > 0 && !activeTeam) { setActiveTeam(mapped[0]); setAppStatus('DASHBOARD'); }
-    else if (mapped.length === 0) setAppStatus('TEAM_SELECT');
+    if (mapped.length > 0) {
+      setAppStatus('DASHBOARD');
+      setActiveTab('overview');
+      // Carga snapshot de todos los equipos en paralelo para la Visión General
+      fetchAllTeamsOverview(mapped);
+    } else {
+      setAppStatus('TEAM_SELECT');
+    }
+  };
+
+  const fetchAllTeamsOverview = async (teamList: Team[]) => {
+    if (!isSupabaseConfigured || teamList.length === 0) return;
+    setOverviewLoading(true);
+    try {
+      const cutoff28 = new Date(Date.now() - 28 * 86400000).toISOString();
+      const cutoffSessions = new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0];
+      const todayStr = localDateStr(new Date());
+
+      const snapshots = await Promise.all(teamList.map(async team => {
+        const [s, i, l, m, se, att] = await Promise.all([
+          supabase.from('subjects').select('*').eq('team_id', team.id),
+          supabase.from('health_incidents').select('*').eq('team_id', team.id).in('status', ['active', 'monitoring']),
+          supabase.from('load_records').select('*').eq('team_id', team.id).gte('created_at', cutoff28),
+          supabase.from('matches').select('*').eq('team_id', team.id).gte('date', todayStr).order('date'),
+          supabase.from('sessions').select('*').eq('team_id', team.id).gte('date', cutoffSessions).order('date'),
+          supabase.from('attendance').select('*').eq('team_id', team.id),
+        ]);
+        return {
+          teamId: team.id,
+          snapshot: {
+            subjects: (s.data || []).map(mapSubject),
+            incidents: (i.data || []).map(mapIncident),
+            loadRecords: (l.data || []).map(mapLoadRecord),
+            matches: (m.data || []).map(mapMatch),
+            sessions: (se.data || []).map(mapSession),
+            attendanceRecords: (att.data || []).map(mapAttendance),
+          },
+        };
+      }));
+
+      const map: Record<string, TeamSnapshot> = {};
+      snapshots.forEach(({ teamId, snapshot }) => { map[teamId] = snapshot; });
+      setAllTeamsData(map);
+    } finally {
+      setOverviewLoading(false);
+    }
   };
 
   const fetchTeamData = async (teamId: string) => {
@@ -8359,6 +8700,13 @@ export default function App() {
   };
 
   const handleTeamSelect = (team: Team) => { setActiveTeam(team); setAppStatus('DASHBOARD'); };
+
+  // Entra en un equipo desde la Visión General y carga sus datos completos
+  const handleEnterTeam = async (team: Team, tab: string = 'sessions') => {
+    setActiveTeam(team);
+    setActiveTab(tab);
+    await fetchTeamData(team.id);
+  };
   const handleLogout = async () => {
     localStorage.removeItem('sh_coach');
     setCurrentUser(null);
@@ -8683,17 +9031,21 @@ export default function App() {
     }
 
     switch (activeTab) {
-      case 'today': return (
-        <TodayView
-          subjects={teamSubjects} incidents={incidents} matches={matches}
-          sessions={sessions} loadRecords={loadRecords} wellnessReports={wellnessReports}
-          attendanceRecords={attendanceRecords}
-          onNavigate={tab => { setActiveTab(tab); setViewingPlayerDetail(false); setShowRosterAttendance(false); }}
-          onOpenSession={session => { setTodaySessionTarget(session); setActiveTab('sessions'); }}
+      case 'overview': return (
+        <OverviewView
+          teams={teams}
+          allTeamsData={allTeamsData}
+          loading={overviewLoading}
+          currentUser={currentUser}
           seasonPeriod={seasonPeriod}
-          onSetPeriod={setSeasonPeriod}
-          teamId={activeTeam?.id}
-          onRPESaved={() => fetchTeamData(activeTeam!.id)}
+          onEnterTeam={handleEnterTeam}
+          onRPEExpress={(team, session) => {
+            setGlobalRPETarget({
+              session,
+              teamId: team.id,
+              subjects: (allTeamsData[team.id]?.subjects || []).filter(s => s.role === Role.PLAYER),
+            });
+          }}
         />
       );
       case 'dashboard': return (
@@ -8899,6 +9251,23 @@ export default function App() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* RPE Express global — lanzado desde Visión General */}
+      <AnimatePresence>
+        {globalRPETarget && (
+          <MobileRPESheet
+            session={globalRPETarget.session}
+            subjects={globalRPETarget.subjects}
+            teamId={globalRPETarget.teamId}
+            onClose={() => setGlobalRPETarget(null)}
+            onSaved={async () => {
+              setGlobalRPETarget(null);
+              await fetchAllTeamsOverview(teams);
+              showToast('RPE guardado ✓', 'success');
+            }}
+          />
         )}
       </AnimatePresence>
 

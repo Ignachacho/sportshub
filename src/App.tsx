@@ -3716,7 +3716,7 @@ type TeamSnapshot = {
 
 const OverviewView = ({
   teams, allTeamsData, loading, currentUser, seasonPeriod,
-  onEnterTeam, onRPEExpress,
+  onEnterTeam, onRPEExpress, onOpenTeamSession,
 }: {
   teams: Team[];
   allTeamsData: Record<string, TeamSnapshot>;
@@ -3725,6 +3725,7 @@ const OverviewView = ({
   seasonPeriod: SeasonPeriod;
   onEnterTeam: (team: Team, tab: string) => void;
   onRPEExpress: (team: Team, session: Session) => void;
+  onOpenTeamSession: (team: Team, session: Session) => void;
 }) => {
   const today = localDateStr(new Date());
   const now = new Date();
@@ -3912,18 +3913,20 @@ const OverviewView = ({
                         pending: { label: '○ Sin datos',                    cls: 'text-slate-500 bg-slate-800 border-slate-700' },
                       }[status];
                       return (
-                        <div key={session.id} className="flex items-center justify-between gap-3">
+                        <button key={session.id}
+                          onClick={() => onOpenTeamSession(card.team, session)}
+                          className="w-full flex items-center justify-between gap-3 hover:bg-slate-800/50 rounded-xl px-2 py-1 -mx-2 transition-all group text-left">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className={cn('text-[8px] font-black px-2 py-0.5 rounded border shrink-0', col.bg.split(' ')[0], col.text, col.border)}>
                               {col.label}
                             </span>
-                            <span className="text-sm font-bold text-white truncate">{session.title || 'Sesión'}</span>
+                            <span className="text-sm font-bold text-white truncate group-hover:text-emerald-400 transition-colors">{session.title || 'Sesión'}</span>
                             <span className="text-[9px] text-slate-600">{session.durationMins}min</span>
                           </div>
                           <span className={cn('text-[8px] font-black px-2 py-1 rounded-lg border shrink-0 whitespace-nowrap', statusCfg.cls)}>
                             {statusCfg.label}
                           </span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -10663,6 +10666,10 @@ export default function App() {
               teamId: team.id,
               subjects: (allTeamsData[team.id]?.subjects || []).filter(s => s.role === Role.PLAYER),
             });
+          }}
+          onOpenTeamSession={(team, session) => {
+            handleEnterTeam(team, 'sessions');
+            setTodaySessionTarget(session);
           }}
         />
       );

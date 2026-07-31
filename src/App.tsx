@@ -9898,6 +9898,14 @@ export default function App() {
     document.title = activeTeam ? `${activeTeam.name} — CoachKit` : 'CoachKit';
   }, [activeTeam]);
 
+  // Refresca allTeamsData cada vez que el usuario navega a la vista de Visión General
+  // para que el estado de "Falta RPE" refleje siempre los datos más recientes.
+  useEffect(() => {
+    if (activeTab === 'overview' && teams.length > 0) {
+      fetchAllTeamsOverview(teams);
+    }
+  }, [activeTab]);
+
   // ─────────────────────────────────────────────────────────────────────────
   // DATA FETCHING
   // ─────────────────────────────────────────────────────────────────────────
@@ -10707,7 +10715,12 @@ export default function App() {
           onSaveSessionPlan={handleSaveSessionPlan}
           initialSession={todaySessionTarget}
           onSessionOpened={() => setTodaySessionTarget(null)}
-          onDataSaved={() => { if (activeTeam) fetchTeamData(activeTeam.id); }} />
+          onDataSaved={() => {
+            if (activeTeam) {
+              fetchTeamData(activeTeam.id);
+              fetchAllTeamsOverview(teams);
+            }
+          }} />
       );
       case 'asistencia': return (
         <AttendanceView

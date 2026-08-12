@@ -9945,12 +9945,18 @@ export default function App() {
     (subjectCounts || []).forEach((s: any) => { countMap[s.team_id] = (countMap[s.team_id] || 0) + 1; });
     const mapped = unique.map(t => ({ ...mapTeam(t), playersCount: countMap[t.id] || 0 }));
     setTeams(mapped);
-    if (mapped.length > 0) {
+    if (mapped.length === 1) {
+      // Un único equipo → entrar directamente (conveniencia)
+      setActiveTeam(mapped[0]);
       setAppStatus('DASHBOARD');
       setActiveTab('overview');
-      // Carga snapshot de todos los equipos en paralelo para la Visión General
+      fetchAllTeamsOverview(mapped);
+    } else if (mapped.length > 1) {
+      // Múltiples equipos → mostrar selector para que el usuario elija
+      setAppStatus('TEAM_SELECT');
       fetchAllTeamsOverview(mapped);
     } else {
+      // Sin equipos → selector para crear el primero
       setAppStatus('TEAM_SELECT');
     }
   };
@@ -10140,7 +10146,7 @@ export default function App() {
     setActiveTeam(null);
     setAppStatus('LOGIN');
   };
-  const handleSwitchTeam = () => { fetchCoachData(); setAppStatus('TEAM_SELECT'); };
+  const handleSwitchTeam = () => { setActiveTeam(null); setAppStatus('TEAM_SELECT'); };
 
   const handleDeleteTeam = async (teamId: string) => {
     if (!isSupabaseConfigured) return;
